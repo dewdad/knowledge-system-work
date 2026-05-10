@@ -1,6 +1,6 @@
 # Knowledge Work System (KWS)
 
-Reusable orchestration substrate for AI agent-driven knowledge management. Consumed as a git submodule (`.system/`) inside LifeOS instance repositories.
+Reusable orchestration substrate for AI agent-driven knowledge, project, and task management. Consumed as a git submodule (`.system/`) inside LifeOS instance repositories.
 
 ## What It Does
 
