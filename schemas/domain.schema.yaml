@@ -1,0 +1,43 @@
+# Schema: domains/<name>/domain.yaml
+# Metadata for a life domain
+
+type: object
+required: [name, description]
+
+properties:
+  name:
+    type: string
+    pattern: "^[a-z][a-z0-9-]*$"
+    description: "Domain identifier (matches directory name)"
+
+  description:
+    type: string
+    description: "What this domain covers"
+
+  color:
+    type: string
+    pattern: "^#[0-9A-Fa-f]{6}$"
+    description: "GitLab label color for this domain"
+
+  goals:
+    type: array
+    items:
+      type: string
+    description: "High-level objectives for this domain"
+
+  review_schedule:
+    type: string
+    enum: [daily, weekly, biweekly, monthly]
+    default: "weekly"
+    description: "How often to run domain-review skill"
+
+  wiki_path:
+    type: string
+    default: "wiki/projects/<domain_name>"
+    description: "Where domain knowledge lives in the wiki"
+
+  related_domains:
+    type: array
+    items:
+      type: string
+    description: "Domains that frequently interact with this one"

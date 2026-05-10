@@ -1,0 +1,80 @@
+# Issue State Machine Definition
+# Used by agents to understand valid transitions
+
+states:
+  inbox:
+    label: "state:inbox"
+    description: "New issue, not yet triaged"
+    allowed_transitions:
+      - ready      # After triage (priority + domain assigned)
+      - wip        # Direct pickup (skip triage for urgent items)
+    entry_actions: []
+    exit_actions:
+      - "Ensure priority label (P0-P3) is set"
+      - "Ensure domain label is set"
+      - "Ensure type label is set"
+
+  ready:
+    label: "state:ready"
+    description: "Triaged, unassigned, available for agent pickup"
+    allowed_transitions:
+      - wip        # Agent claims it
+      - blocked    # Discovered dependency before work starts
+    entry_actions:
+      - "Verify priority, domain, type labels present"
+    exit_actions: []
+
+  wip:
+    label: "state:wip"
+    description: "Claimed by an agent, actively being worked"
+    allowed_transitions:
+      - review     # Work done, MR created
+      - ready      # Agent releases (can't finish)
+      - blocked    # Discovered dependency during work
+    entry_actions:
+      - "Assign to claiming agent"
+      - "Create working branch: issue/<ID>-<slug>"
+      - "Add claim comment with hostname + timestamp"
+    exit_actions: []
+    timeout:
+      minutes: 30
+      recovery: "Eligible for reclaim by another agent"
+
+  review:
+    label: "state:review"
+    description: "MR open, awaiting merge/review"
+    allowed_transitions:
+      - done       # MR merged
+      - wip        # MR rejected, needs rework
+    entry_actions:
+      - "MR must exist and reference the issue"
+      - "Unassign working agent (optional)"
+    exit_actions: []
+
+  blocked:
+    label: "state:blocked"
+    description: "Waiting on external dependency"
+    allowed_transitions:
+      - ready      # Dependency resolved, back to queue
+      - wip        # Dependency resolved, same agent continues
+    entry_actions:
+      - "Add comment explaining what's blocking"
+      - "Link to blocking issue if applicable"
+    exit_actions:
+      - "Remove blocking note or mark resolved"
+
+  done:
+    label: null  # Represented by issue closure
+    description: "Issue resolved and closed"
+    allowed_transitions: []
+    entry_actions:
+      - "Close issue via glab issue close <ID>"
+      - "Add completion comment"
+    exit_actions: []
+
+# Transition validation
+rules:
+  - "Only one state label at a time (mutually exclusive)"
+  - "Agent must remove old state label when adding new one"
+  - "Assignment required for state:wip"
+  - "MR required for state:review"

@@ -1,0 +1,88 @@
+# Schema: domains/<name>/sources.yaml
+# Defines external sources for a domain
+
+type: object
+required: [domain, sources]
+
+properties:
+  domain:
+    type: string
+    pattern: "^[a-z][a-z0-9-]*$"
+    description: "Domain name (must match parent directory name)"
+
+  sources:
+    type: array
+    items:
+      type: object
+      required: [id, type, pull_schedule]
+      properties:
+        id:
+          type: string
+          pattern: "^[a-z][a-z0-9-]*$"
+          description: "Unique source identifier (used in labels and state)"
+
+        type:
+          type: string
+          enum: [rss, youtube, api, email, chat, git, calendar, manual]
+          description: "Source type determines pull mechanism"
+
+        pull_schedule:
+          type: string
+          enum: [hourly, daily, weekly, monthly, manual]
+          description: "How often to check for new items"
+
+        auto_triage:
+          type: boolean
+          default: true
+          description: "Automatically create GitLab issues for new items"
+
+        # Type-specific fields
+        url:
+          type: string
+          format: uri
+          description: "For rss, api types: endpoint URL"
+
+        channel_id:
+          type: string
+          description: "For youtube type: YouTube channel ID"
+
+        playlist_id:
+          type: string
+          description: "For youtube type: YouTube playlist ID (alternative)"
+
+        endpoint:
+          type: string
+          format: uri
+          description: "For api type: API endpoint"
+
+        auth_ref:
+          type: string
+          description: "Path to auth credential (relative to instance root, in secrets/)"
+
+        filter_keywords:
+          type: array
+          items:
+            type: string
+          description: "Only create issues for items matching these keywords"
+
+        extract:
+          type: array
+          items:
+            type: string
+            enum: [titles, descriptions, timestamps, full_content, metadata]
+          description: "What to extract from source items"
+
+        transform:
+          type: string
+          description: "Path to transform script (processes raw items before issue creation)"
+
+        repo:
+          type: string
+          description: "For git type: repository path (owner/repo)"
+
+        events:
+          type: array
+          items:
+            type: string
+            enum: [commits, releases, issues, pull_requests, tags]
+          description: "For git type: which events to track"

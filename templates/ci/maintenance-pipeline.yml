@@ -1,0 +1,53 @@
+# Maintenance Pipeline Fragment
+# Include in instance .gitlab-ci.yml
+
+source-validate:
+  stage: validate
+  rules:
+    - changes:
+        - "domains/**/sources.yaml"
+  script:
+    - echo "Validating source configurations..."
+    - |
+      for config in domains/*/sources.yaml; do
+        DOMAIN=$(basename $(dirname "$config"))
+        echo "Checking ${DOMAIN}..."
+        
+        # Basic YAML syntax check
+        if ! python3 -c "import yaml; yaml.safe_load(open('$config'))" 2>/dev/null; then
+          echo "ERROR: Invalid YAML in ${config}"
+          exit 1
+        fi
+        
+        # Check required fields
+        python3 -c "
+import yaml, sys
+with open('$config') as f:
+    data = yaml.safe_load(f)
+if not data.get('domain'):
+    print('ERROR: missing domain field')
+    sys.exit(1)
+if not data.get('sources'):
+    print('ERROR: missing sources field')
+    sys.exit(1)
+for s in data['sources']:
+    if not s.get('id'):
+        print(f'ERROR: source missing id')
+        sys.exit(1)
+    if not s.get('type'):
+        print(f'ERROR: source {s[\"id\"]} missing type')
+        sys.exit(1)
+print(f'  ✓ {data[\"domain\"]}: {len(data[\"sources\"])} sources valid')
+" || exit 1
+      done
+    - echo "All source configs valid"
+
+nightly-maintenance:
+  stage: maintain
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+  script:
+    - echo "Running nightly maintenance..."
+    - .system/scripts/maintenance/stale-lock-recovery.sh || true
+    - .system/scripts/maintenance/wiki-lint.sh || true
+    - echo "Maintenance complete"

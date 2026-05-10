@@ -1,0 +1,18 @@
+# Example domain configuration
+# Copy to domains/<your_domain>/domain.yaml
+
+name: health
+description: "Physical and mental wellbeing — exercise, nutrition, sleep, medical"
+color: "#0E8A16"
+
+goals:
+  - "Maintain consistent sleep schedule"
+  - "Exercise 4x per week"
+  - "Track nutrition and supplementation"
+
+review_schedule: weekly
+
+wiki_path: "wiki/projects/health"
+
+related_domains:
+  - learning    # Health research overlaps with learning

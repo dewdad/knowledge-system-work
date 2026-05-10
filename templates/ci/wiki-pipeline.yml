@@ -1,0 +1,45 @@
+# Wiki Pipeline Fragment
+# Include in instance .gitlab-ci.yml via: include: local: '.system/templates/ci/wiki-pipeline.yml'
+
+wiki-lint:
+  stage: validate
+  rules:
+    - changes:
+        - "wiki/**/*"
+  script:
+    - echo "Validating wiki structure..."
+    - |
+      # Check for broken wikilinks
+      BROKEN=0
+      for file in $(find wiki/ -name "*.md" -type f); do
+        # Extract [[links]] and verify targets exist
+        grep -oP '\[\[([^\]|]+)' "$file" | sed 's/\[\[//' | while read link; do
+          TARGET="wiki/${link}.md"
+          if [ ! -f "$TARGET" ] && [ ! -d "wiki/${link}" ]; then
+            echo "BROKEN LINK: ${file} → [[${link}]]"
+            BROKEN=$((BROKEN + 1))
+          fi
+        done
+      done
+      if [ "$BROKEN" -gt 0 ]; then
+        echo "Found $BROKEN broken wikilinks"
+        exit 1
+      fi
+    - echo "Wiki validation passed"
+
+wiki-orphan-check:
+  stage: validate
+  rules:
+    - changes:
+        - "wiki/**/*"
+  script:
+    - echo "Checking for orphaned pages..."
+    - |
+      # Find pages not linked from any other page
+      for file in $(find wiki/ -name "*.md" -type f -not -path "wiki/_*"); do
+        BASENAME=$(basename "$file" .md)
+        LINKS=$(grep -r "\[\[${BASENAME}" wiki/ --include="*.md" -l | grep -v "$file" | wc -l)
+        if [ "$LINKS" -eq 0 ] && [ "$BASENAME" != "index" ]; then
+          echo "ORPHAN: ${file} (no incoming links)"
+        fi
+      done

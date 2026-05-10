@@ -1,0 +1,34 @@
+# Example sources configuration
+# Copy to domains/<your_domain>/sources.yaml
+
+domain: health
+
+sources:
+  - id: huberman-lab
+    type: youtube
+    channel_id: UC2D2CMWXMOVWx7giW1n3LIg
+    pull_schedule: daily
+    extract: [titles, descriptions]
+    auto_triage: true
+    filter_keywords: [sleep, dopamine, exercise, nutrition, supplement]
+
+  - id: examine-research
+    type: rss
+    url: https://examine.com/feed/
+    pull_schedule: weekly
+    auto_triage: true
+    filter_keywords: [sleep, creatine, vitamin-d, magnesium]
+
+  - id: fitness-tracker
+    type: api
+    endpoint: https://api.fitbit.com/1/user/-/activities.json
+    auth_ref: secrets/fitbit_token
+    pull_schedule: daily
+    auto_triage: false
+    transform: scripts/transforms/fitbit-summary.sh
+
+  - id: health-notes
+    type: manual
+    pull_schedule: manual
+    auto_triage: false
+    # Drop files in raw/ and run wiki-ingest manually

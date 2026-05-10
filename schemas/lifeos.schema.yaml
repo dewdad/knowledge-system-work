@@ -1,0 +1,89 @@
+# Schema: lifeos.yaml (Instance Configuration)
+# Validated by bootstrap and upgrade scripts
+
+type: object
+required: [instance, identity, domains, agent_config]
+
+properties:
+  instance:
+    type: object
+    required: [name, owner, gitlab_project, system_version]
+    properties:
+      name:
+        type: string
+        description: "Human-readable instance name"
+      owner:
+        type: string
+        description: "GitLab username"
+      gitlab_project:
+        type: string
+        pattern: "^[a-z0-9_-]+/[a-z0-9_-]+$"
+        description: "GitLab project path (owner/repo)"
+      system_version:
+        type: string
+        pattern: "^\\d+\\.\\d+\\.\\d+$"
+        description: "Expected .system/ version (semver)"
+
+  identity:
+    type: object
+    required: [timezone, locale]
+    properties:
+      timezone:
+        type: string
+        description: "IANA timezone (e.g., Asia/Jerusalem)"
+      locale:
+        type: string
+        pattern: "^[a-z]{2}-[A-Z]{2}$"
+        description: "Locale code (e.g., en-US)"
+
+  domains:
+    type: array
+    items:
+      type: string
+      pattern: "^[a-z][a-z0-9-]*$"
+    minItems: 1
+    description: "List of domain names (must match domains/ subdirectories)"
+
+  agent_config:
+    type: object
+    required: [default_branch, mr_required, stale_wip_timeout_minutes]
+    properties:
+      default_branch:
+        type: string
+        default: "main"
+      mr_required:
+        type: boolean
+        default: true
+        description: "Require MR workflow (no direct push to default branch)"
+      auto_merge:
+        type: boolean
+        default: false
+        description: "Auto-merge MRs when CI passes"
+      stale_wip_timeout_minutes:
+        type: integer
+        minimum: 10
+        maximum: 1440
+        default: 30
+        description: "Minutes before a WIP lock is considered stale"
+      max_parallel_agents:
+        type: integer
+        minimum: 1
+        maximum: 10
+        default: 3
+        description: "Maximum agents working simultaneously"
+
+  scheduling:
+    type: object
+    properties:
+      source_pull:
+        type: string
+        description: "Cron expression for source pulling"
+      wiki_lint:
+        type: string
+        description: "Cron expression for wiki validation"
+      morning_brief:
+        type: string
+        description: "Cron expression for daily brief"
+      weekly_review:
+        type: string
+        description: "Cron expression for weekly review"

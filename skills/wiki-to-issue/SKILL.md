@@ -1,0 +1,81 @@
+# Skill: Wiki to Issue
+
+> Convert wiki insights, gaps, or contradictions into actionable GitLab issues.
+
+## When to Use
+
+- Wiki synthesis reveals an actionable gap
+- Cross-link analysis shows contradictions
+- Domain review identifies missing coverage
+- Manual review notes "we should do X"
+
+## Steps
+
+### 1. Identify Actionable Insight
+
+Sources of insights:
+- `wiki/_meta/_insights.md` (auto-generated)
+- `wiki/synthesis/` pages with open questions
+- Orphaned pages that need integration
+- Contradictions between pages
+
+### 2. Determine Issue Type
+
+| Insight | Issue Type | Priority |
+|---|---|---|
+| Knowledge gap (we don't know X) | `type:research` | P2-P3 |
+| Contradiction (page A says X, page B says Y) | `type:decision` | P1-P2 |
+| Missing implementation (we decided X but haven't done it) | `type:task` | P1-P2 |
+| Emerging pattern (X keeps coming up) | `type:research` | P3 |
+
+### 3. Create Issue
+
+```bash
+glab issue create \
+  --title "<Actionable title starting with verb>" \
+  --label "state:inbox,domain:<domain>,type:<type>,source:wiki" \
+  --description "## Context
+
+Identified from wiki analysis of [[<source_page>]].
+
+## The Gap/Problem
+
+<What's missing, contradictory, or actionable>
+
+## Suggested Action
+
+<What should be done>
+
+## Wiki References
+
+- [[<page1>]]
+- [[<page2>]]
+
+---
+_Auto-created by wiki-to-issue skill_"
+```
+
+### 4. Update Wiki Page
+
+Add a note in the source wiki page linking to the new issue:
+
+```markdown
+> **Action**: See [Issue #<ID>](<link>) for follow-up.
+```
+
+### 5. Triage (Optional)
+
+If you can determine priority and domain from context, apply those labels immediately to skip the triage step:
+
+```bash
+glab issue update <ID> \
+  --unlabel "state:inbox" \
+  --label "state:ready,P2:medium"
+```
+
+## Quality Rules
+
+- Issue titles MUST start with an action verb (Investigate, Decide, Implement, Resolve)
+- Always link back to wiki source (bidirectional traceability)
+- Don't create issues for things that are "nice to know" — only actionable items
+- One issue per actionable insight (don't bundle)

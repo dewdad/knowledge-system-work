@@ -1,0 +1,57 @@
+# Standard Labels for LifeOS GitLab Projects
+# Apply via: .system/scripts/setup/bootstrap.sh
+# Or manually: glab label create "<name>" --color "<color>" --description "<desc>"
+
+states:
+  - name: "state:inbox"
+    color: "#E4E669"
+    description: "New, untriaged issue"
+  - name: "state:ready"
+    color: "#0E8A16"
+    description: "Triaged, available for agent pickup"
+  - name: "state:wip"
+    color: "#D93F0B"
+    description: "Claimed by agent, actively in progress"
+  - name: "state:review"
+    color: "#0052CC"
+    description: "MR created, awaiting merge"
+  - name: "state:blocked"
+    color: "#B60205"
+    description: "Waiting on external dependency"
+
+priority:
+  - name: "P0:critical"
+    color: "#B60205"
+    description: "Must be done immediately"
+  - name: "P1:high"
+    color: "#D93F0B"
+    description: "Do this week"
+  - name: "P2:medium"
+    color: "#FBCA04"
+    description: "Do this sprint"
+  - name: "P3:low"
+    color: "#0E8A16"
+    description: "Nice to have, backlog"
+
+type:
+  - name: "type:task"
+    color: "#FBCA04"
+    description: "Actionable work item"
+  - name: "type:research"
+    color: "#5319E7"
+    description: "Investigation, learning, exploration"
+  - name: "type:decision"
+    color: "#D93F0B"
+    description: "Requires decision, document rationale"
+  - name: "type:maintenance"
+    color: "#C5DEF5"
+    description: "Housekeeping, cleanup, optimization"
+  - name: "type:source-item"
+    color: "#BFD4F2"
+    description: "Auto-created from source pull"
+  - name: "type:bug"
+    color: "#B60205"
+    description: "Something broken that needs fixing"
+
+# Domain labels are created per-instance from lifeos.yaml
+# Source labels are created dynamically by source-pull script

@@ -1,0 +1,36 @@
+# Schema: domains/<name>/.state/pulls.json
+# Tracks last pull state for each source in a domain
+
+type: object
+additionalProperties:
+  type: object
+  required: [last_pull]
+  properties:
+    last_pull:
+      type: string
+      format: date-time
+      description: "ISO 8601 timestamp of last successful pull"
+
+    last_item_id:
+      type: string
+      description: "Identifier of the most recent item seen (for dedup)"
+
+    items_pulled:
+      type: integer
+      minimum: 0
+      description: "Total items ever pulled from this source"
+
+    items_triaged:
+      type: integer
+      minimum: 0
+      description: "Total issues created from this source"
+
+    last_error:
+      type: string
+      description: "Last error message (null if last pull succeeded)"
+
+    consecutive_failures:
+      type: integer
+      minimum: 0
+      default: 0
+      description: "Number of consecutive failed pulls (reset on success)"
