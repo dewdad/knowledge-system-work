@@ -23,4 +23,4 @@ tmp/
 graphify-out/
 
 # Agent working state
-.sisyphus/
+.sisyphus/run-continuation
