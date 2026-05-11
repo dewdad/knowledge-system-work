@@ -4,7 +4,7 @@
 
 ## What This Repo Is
 
-**KWS** is an installable AI agent skill. The product is `SKILL.md` — a single markdown file that any AI coding agent can load to bootstrap and operate a knowledge management system.
+**KSW** is an installable AI agent skill. The product is `SKILL.md` — a single markdown file that any AI coding agent can load to bootstrap and operate a knowledge management system.
 
 This repo is NOT an application. It's a skill definition with supporting reference material.
 
@@ -42,7 +42,7 @@ This is the primary deliverable. Changes here affect all consumers.
 - Keep it self-contained — no external file references that consumers won't have
 - Follow the existing section structure: Commands table → /init → /add-domain → workflows → schemas
 - Platform commands must always show all 3 variants (gitlab/github/local)
-- Test by loading the skill in an AI agent and running `/kws init`
+- Test by loading the skill in an AI agent and running `/ksw init`
 
 ### Editing reference/
 
@@ -57,7 +57,7 @@ Changes here don't affect consumers unless you also update SKILL.md.
 - Version in `VERSION` file (semver)
 - Patch: workflow clarifications, typo fixes
 - Minor: new workflows, new commands, schema additions
-- Major: breaking changes to /init output structure or kws.yaml format
+- Major: breaking changes to /init output structure or ksw.yaml format
 
 ## Conventions
 

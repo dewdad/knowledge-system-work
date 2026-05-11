@@ -1,4 +1,4 @@
-# Knowledge Work System (KWS)
+# Knowledge Work System (KSW)
 
 Installable AI agent skill for bootstrapping a complete knowledge management, project coordination, and task orchestration system in any git repository.
 
@@ -16,19 +16,19 @@ One `/init` command gives you:
 
 ### Skillshare
 ```bash
-skillshare install kws --source github:dewdad/knowledge-system-work
+skillshare install ksw --source github:dewdad/knowledge-system-work
 ```
 
 ### OpenCode
 ```bash
 # Copy or symlink SKILL.md into your skills directory
-cp SKILL.md ~/.config/opencode/skills/kws/SKILL.md
+cp SKILL.md ~/.config/opencode/skills/ksw/SKILL.md
 ```
 
 ### Claude Code
 ```bash
 # Add to .claude/skills/ in your project or global config
-cp SKILL.md ~/.claude/skills/kws.md
+cp SKILL.md ~/.claude/skills/ksw.md
 ```
 
 ### Manual
@@ -39,17 +39,17 @@ Copy `SKILL.md` from this repo into your AI client's skill directory.
 Once installed, tell your AI agent:
 
 ```
-/kws init
+/ksw init
 ```
 
 This bootstraps the full system in your current project. Then:
 
 ```
-/kws add-domain health
-/kws add-source health rss huberman-lab
-/kws pull
-/kws triage
-/kws brief
+/ksw add-domain health
+/ksw add-source health rss huberman-lab
+/ksw pull
+/ksw triage
+/ksw brief
 ```
 
 ## Platform Support
@@ -81,16 +81,16 @@ reference/            ← Supporting documentation
 
 | Command | Action |
 |---------|--------|
-| `/kws init` | Bootstrap full system in project root |
-| `/kws add-domain <name>` | Add a knowledge domain |
-| `/kws add-source <domain> <type> <id>` | Add source feed to domain |
-| `/kws pull [domain]` | Pull from sources |
-| `/kws triage` | Auto-label inbox items |
-| `/kws ingest <path>` | Process raw material into wiki |
-| `/kws synthesize` | Cross-domain pattern detection |
-| `/kws review <domain>` | Domain health check |
-| `/kws brief` | Generate status summary |
-| `/kws status` | System state overview |
+| `/ksw init` | Bootstrap full system in project root |
+| `/ksw add-domain <name>` | Add a knowledge domain |
+| `/ksw add-source <domain> <type> <id>` | Add source feed to domain |
+| `/ksw pull [domain]` | Pull from sources |
+| `/ksw triage` | Auto-label inbox items |
+| `/ksw ingest <path>` | Process raw material into wiki |
+| `/ksw synthesize` | Cross-domain pattern detection |
+| `/ksw review <domain>` | Domain health check |
+| `/ksw brief` | Generate status summary |
+| `/ksw status` | System state overview |
 
 ## Requirements
 

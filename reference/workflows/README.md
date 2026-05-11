@@ -14,7 +14,7 @@ Skills are markdown-based instructions that agents load and follow for specific 
 | [issue-to-wiki](issue-to-wiki/SKILL.md) | Closed issue → decision record | Issue closed |
 | [wiki-to-issue](wiki-to-issue/SKILL.md) | Wiki gap → actionable issue | On wiki analysis |
 | [morning-brief](morning-brief/SKILL.md) | Generate daily summary | Daily scheduled |
-| **[kws](/SKILL.md)** | **Installable agent skill — /init bootstraps full KWS** | **`/kws init` or install via skillshare** |
+| **[ksw](/SKILL.md)** | **Installable agent skill — /init bootstraps full KSW** | **`/ksw init` or install via skillshare** |
 
 ## Skill Format
 
@@ -34,4 +34,4 @@ skills/<name>/
 
 ## Creating New Skills
 
-Place new skills in this directory following the same format. Skills in `.system/` are generic (work for any LifeOS instance). Instance-specific skills go in the parent project's custom location.
+Place new skills in this directory following the same format. Skills in `.system/` are generic (work for any KSW instance). Instance-specific skills go in the parent project's custom location.

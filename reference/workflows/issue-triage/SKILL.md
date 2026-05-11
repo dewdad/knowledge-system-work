@@ -21,7 +21,7 @@ glab issue list --label "state:inbox"
 Read the issue title and description. Apply:
 
 #### Domain Label
-Match keywords to domains defined in `lifeos.yaml`:
+Match keywords to domains defined in `ksw.yaml`:
 - Health-related terms → `domain:health`
 - Financial terms → `domain:finance`
 - Career/work terms → `domain:career`

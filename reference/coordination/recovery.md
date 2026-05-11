@@ -14,7 +14,7 @@ A lock is considered **stale** when ALL conditions are met:
 
 - Issue has label `state:wip`
 - Issue has an assignee
-- `updated_at` timestamp on the issue is older than `stale_wip_timeout_minutes` (from `lifeos.yaml`, default: 30)
+- `updated_at` timestamp on the issue is older than `stale_wip_timeout_minutes` (from `ksw.yaml`, default: 30)
 - No new commits on the working branch within the timeout period
 
 ## Recovery Script

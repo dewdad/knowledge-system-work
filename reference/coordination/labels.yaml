@@ -1,4 +1,4 @@
-# Standard Labels for LifeOS GitLab Projects
+# Standard Labels for KSW Projects
 # Apply via: .system/scripts/setup/bootstrap.sh
 # Or manually: glab label create "<name>" --color "<color>" --description "<desc>"
 
@@ -53,5 +53,5 @@ type:
     color: "#B60205"
     description: "Something broken that needs fixing"
 
-# Domain labels are created per-instance from lifeos.yaml
+# Domain labels are created per-instance from ksw.yaml
 # Source labels are created dynamically by source-pull script

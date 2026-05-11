@@ -4,7 +4,7 @@
 
 ## When to Use
 
-- Scheduled daily (per `lifeos.yaml` scheduling.morning_brief)
+- Scheduled daily (per `ksw.yaml` scheduling.morning_brief)
 - On-demand "what's the status?" requests
 
 ## Steps

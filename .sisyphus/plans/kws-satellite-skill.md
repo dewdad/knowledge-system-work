@@ -1,29 +1,29 @@
-# Planning: KWS Satellite Skill
+# Planning: KSW Satellite Skill
 
-> Install-once bridge that permanently connects isolated workspaces to a central KWS instance. After initialization, the workspace is reliably tracked by KWS — no skill reload required.
+> Install-once bridge that permanently connects isolated workspaces to a central KSW instance. After initialization, the workspace is reliably tracked by KSW — no skill reload required.
 
 ## Problem Statement
 
-A user operates KWS in a dedicated GitLab repository (the "hub"). Their actual coding projects, agent sessions, and workspaces live in **separate directories/repos** that have no knowledge of KWS. Today, work done in those isolated contexts is invisible to KWS — tasks aren't tracked, decisions aren't captured, and knowledge doesn't flow back to the wiki.
+A user operates KSW in a dedicated GitLab repository (the "hub"). Their actual coding projects, agent sessions, and workspaces live in **separate directories/repos** that have no knowledge of KSW. Today, work done in those isolated contexts is invisible to KSW — tasks aren't tracked, decisions aren't captured, and knowledge doesn't flow back to the wiki.
 
 ### Concrete Gaps
 
-1. Agent sessions in `~/projects/frontend-app/` can't claim or report progress on KWS issues
+1. Agent sessions in `~/projects/frontend-app/` can't claim or report progress on KSW issues
 2. Decisions made during implementation in satellite projects aren't captured as wiki decision records
-3. No way to create KWS issues from within a satellite workspace without switching context
+3. No way to create KSW issues from within a satellite workspace without switching context
 4. Knowledge generated (patterns, learnings, ADRs) in satellite repos stays trapped there
-5. Morning briefs can't report on work happening outside the KWS repo
+5. Morning briefs can't report on work happening outside the KSW repo
 
-## Proposed Solution: `kws-satellite` Skill
+## Proposed Solution: `ksw-satellite` Skill
 
-A skill that acts primarily as an **installer**. When invoked (`/kws-sat init`), it sets up persistent mechanisms in the workspace so that all future AI sessions and git operations automatically feed back into the central KWS hub. The skill itself is not needed after initialization — the installed artifacts carry the behavior forward.
+A skill that acts primarily as an **installer**. When invoked (`/ksw-sat init`), it sets up persistent mechanisms in the workspace so that all future AI sessions and git operations automatically feed back into the central KSW hub. The skill itself is not needed after initialization — the installed artifacts carry the behavior forward.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  KWS Hub (GitLab repo)                                      │
-│  ├── kws.yaml                                               │
+│  KSW Hub (GitLab repo)                                      │
+│  ├── ksw.yaml                                               │
 │  ├── domains/                                               │
 │  ├── wiki/                                                  │
 │  └── Issue Board ← receives progress, knowledge, new issues │
@@ -36,7 +36,7 @@ A skill that acts primarily as an **installer**. When invoked (`/kws-sat init`),
     │ Proj A │       │ Proj B │               │ Proj C   │
     │        │       │        │               │          │
     │ INSTALLED ARTIFACTS (persist after init):           │
-    │ ├── .kws-link.yaml     (config)                    │
+    │ ├── .ksw-link.yaml     (config)                    │
     │ ├── AGENTS.md section  (agent instructions)        │
     │ ├── .claude/hooks      (agent lifecycle hooks)     │
     │ └── .git/hooks/        (mechanical tracking)       │
@@ -45,8 +45,8 @@ A skill that acts primarily as an **installer**. When invoked (`/kws-sat init`),
 
 ### Core Principle: Install Once, Tracked Forever
 
-The satellite skill's primary job is `/kws-sat init`. After that:
-- **AGENTS.md** ensures every AI agent session starts with KWS context
+The satellite skill's primary job is `/ksw-sat init`. After that:
+- **AGENTS.md** ensures every AI agent session starts with KSW context
 - **Agent hooks** fire at session lifecycle boundaries to negotiate knowledge contribution
 - **Git hooks** mechanically track progress without AI involvement
 
@@ -65,33 +65,33 @@ The skill also provides on-demand commands (board, claim, contribute) for explic
 **What gets installed** (appended to workspace AGENTS.md):
 
 ```markdown
-## KWS Satellite — Automatic Knowledge Bridge
+## KSW Satellite — Automatic Knowledge Bridge
 
-This workspace is connected to KWS hub: `<project_path>` (<platform>)
-Config: `.kws-link.yaml`
+This workspace is connected to KSW hub: `<project_path>` (<platform>)
+Config: `.ksw-link.yaml`
 
 ### Your Responsibilities as an Agent in This Workspace
 
 1. **Session Awareness**: At session start, check active claims:
    `glab issue list -R <hub> --label "state:wip" --assignee "@me"`
-   If this workspace has active claims (in .kws-link.yaml#active_claims),
+   If this workspace has active claims (in .ksw-link.yaml#active_claims),
    orient your work around them and report progress at session end.
 
 2. **Decision Detection**: When you help the user make an architectural,
-   design, or strategic decision — offer to record it as a KWS decision
+   design, or strategic decision — offer to record it as a KSW decision
    record. Push via sparse checkout to hub wiki/decisions/.
 
 3. **Knowledge Extraction**: When the session produces reusable knowledge
    (patterns, gotchas, how-tos, evaluations), assess whether it belongs
-   in the KWS wiki. Ask the user: "This looks like knowledge worth
-   capturing in KWS under [domain]. Want me to contribute it?"
+   in the KSW wiki. Ask the user: "This looks like knowledge worth
+   capturing in KSW under [domain]. Want me to contribute it?"
 
 4. **Issue Creation**: When you discover bugs, technical debt, or future
-   work items, offer to create a KWS issue:
+   work items, offer to create a KSW issue:
    `glab issue create -R <hub> --title "..." --label "state:inbox,..."`
 
-5. **Context Linking**: When working on code that relates to a KWS issue,
-   reference it in commit messages: "Fix auth flow (KWS #12)"
+5. **Context Linking**: When working on code that relates to a KSW issue,
+   reference it in commit messages: "Fix auth flow (KSW #12)"
 
 ### What NOT to Do
 - Don't push trivial session artifacts (debugging notes, scratch work)
@@ -106,7 +106,7 @@ Config: `.kws-link.yaml`
 
 ### Mechanism 2: Agent Hooks (Session Lifecycle Automation)
 
-**Purpose**: Trigger specific KWS-aware actions at session boundaries without relying on the agent to "remember" from AGENTS.md alone.
+**Purpose**: Trigger specific KSW-aware actions at session boundaries without relying on the agent to "remember" from AGENTS.md alone.
 
 **Why hooks**: AGENTS.md is read once at session start and may be deprioritized as context fills. Hooks fire reliably at specific lifecycle points regardless of context pressure.
 
@@ -115,26 +115,26 @@ Config: `.kws-link.yaml`
 #### For OpenCode (`.opencode/hooks/` or equivalent):
 
 ```yaml
-# .opencode/hooks/kws-satellite.yaml
+# .opencode/hooks/ksw-satellite.yaml
 on_session_start:
-  description: "Load KWS context"
+  description: "Load KSW context"
   run: |
-    echo "=== KWS Satellite Active ==="
-    echo "Hub: $(yq '.hub.project_path' .kws-link.yaml)"
+    echo "=== KSW Satellite Active ==="
+    echo "Hub: $(yq '.hub.project_path' .ksw-link.yaml)"
     echo ""
     echo "Your active claims:"
-    glab issue list -R $(yq '.hub.project_path' .kws-link.yaml) --label "state:wip" --assignee "@me" 2>/dev/null || echo "  (none)"
+    glab issue list -R $(yq '.hub.project_path' .ksw-link.yaml) --label "state:wip" --assignee "@me" 2>/dev/null || echo "  (none)"
     echo ""
     echo "Ready to pick up:"
-    glab issue list -R $(yq '.hub.project_path' .kws-link.yaml) --label "state:ready" --per-page 5 2>/dev/null || echo "  (none)"
+    glab issue list -R $(yq '.hub.project_path' .ksw-link.yaml) --label "state:ready" --per-page 5 2>/dev/null || echo "  (none)"
 
 on_session_end:
-  description: "KWS wrap-up prompt"
+  description: "KSW wrap-up prompt"
   prompt: |
     Before closing, review what was accomplished this session:
-    1. If you worked on a claimed KWS issue, summarize progress and log it
+    1. If you worked on a claimed KSW issue, summarize progress and log it
     2. If significant decisions were made, offer to contribute them
-    3. If new work was discovered, offer to create KWS issues
+    3. If new work was discovered, offer to create KSW issues
     Run: glab issue note <ID> -R <hub> --message "<summary>" for any active claims.
 ```
 
@@ -145,19 +145,19 @@ on_session_end:
 ## Session Hooks
 
 ### On Start
-Run this silently at session start to load KWS context:
-- Read .kws-link.yaml → identify hub
+Run this silently at session start to load KSW context:
+- Read .ksw-link.yaml → identify hub
 - List my active claims: `glab issue list -R <hub> --label "state:wip" --assignee "@me"`
 - Mention active claims to the user if any exist
 
 ### On Wrap-Up (user says "done", "wrap up", "that's all", or session ends)
 Before finishing:
-- Summarize session accomplishments against any active KWS claims
-- Ask: "Should I log this progress to KWS issue #<ID>?"
+- Summarize session accomplishments against any active KSW claims
+- Ask: "Should I log this progress to KSW issue #<ID>?"
 - Ask: "Any knowledge worth contributing to the hub wiki?"
 ```
 
-**Key design choice**: Hooks are the "reliable trigger" layer. They don't decide *what* to capture (that's AGENTS.md's job) — they ensure the agent is *prompted* to consider KWS at the right moments.
+**Key design choice**: Hooks are the "reliable trigger" layer. They don't decide *what* to capture (that's AGENTS.md's job) — they ensure the agent is *prompted* to consider KSW at the right moments.
 
 ---
 
@@ -173,19 +173,19 @@ Before finishing:
 
 ```bash
 #!/bin/bash
-# .git/hooks/post-commit (installed by /kws-sat init)
-# Purpose: Auto-comment on claimed KWS issues when commits reference them
+# .git/hooks/post-commit (installed by /ksw-sat init)
+# Purpose: Auto-comment on claimed KSW issues when commits reference them
 
-KWS_LINK=".kws-link.yaml"
-[ -f "$KWS_LINK" ] || exit 0
+KSW_LINK=".ksw-link.yaml"
+[ -f "$KSW_LINK" ] || exit 0
 
-HUB=$(yq -r '.hub.project_path' "$KWS_LINK")
-PLATFORM=$(yq -r '.hub.platform' "$KWS_LINK")
+HUB=$(yq -r '.hub.project_path' "$KSW_LINK")
+PLATFORM=$(yq -r '.hub.platform' "$KSW_LINK")
 MSG=$(git log -1 --format=%s)
 BRANCH=$(git branch --show-current)
 
 # Strategy 1: Explicit issue reference in commit message
-if [[ "$MSG" =~ KWS[[:space:]]*#([0-9]+) ]] || [[ "$MSG" =~ \(KWS\ #([0-9]+)\) ]]; then
+if [[ "$MSG" =~ KSW[[:space:]]*#([0-9]+) ]] || [[ "$MSG" =~ \(KSW\ #([0-9]+)\) ]]; then
   ID="${BASH_REMATCH[1]}"
   if [ "$PLATFORM" = "gitlab" ]; then
     glab issue note "$ID" -R "$HUB" --message "Progress from \`$(basename $PWD)\`: $MSG" &
@@ -214,14 +214,14 @@ fi
 
 ```bash
 #!/bin/bash
-# .git/hooks/post-merge (installed by /kws-sat init)
+# .git/hooks/post-merge (installed by /ksw-sat init)
 # Purpose: When an issue branch merges into main, transition issue to review
 
-KWS_LINK=".kws-link.yaml"
-[ -f "$KWS_LINK" ] || exit 0
+KSW_LINK=".ksw-link.yaml"
+[ -f "$KSW_LINK" ] || exit 0
 
-HUB=$(yq -r '.hub.project_path' "$KWS_LINK")
-PLATFORM=$(yq -r '.hub.platform' "$KWS_LINK")
+HUB=$(yq -r '.hub.project_path' "$KSW_LINK")
+PLATFORM=$(yq -r '.hub.platform' "$KSW_LINK")
 BRANCH=$(git log -1 --format=%s | grep -oP 'issue/\K[0-9]+' || true)
 
 if [ -n "$BRANCH" ]; then
@@ -233,7 +233,7 @@ if [ -n "$BRANCH" ]; then
     gh issue comment "$BRANCH" -R "$HUB" --body "Branch merged in \`$(basename $PWD)\`. Work complete, ready for review."
   fi
   # Remove from active_claims
-  yq -i "del(.active_claims[] | select(. == $BRANCH))" "$KWS_LINK"
+  yq -i "del(.active_claims[] | select(. == $BRANCH))" "$KSW_LINK"
 fi
 ```
 
@@ -241,16 +241,16 @@ fi
 
 ```bash
 #!/bin/bash
-# .git/hooks/prepare-commit-msg (installed by /kws-sat init)
-# Purpose: Auto-append KWS issue reference if on an issue branch
+# .git/hooks/prepare-commit-msg (installed by /ksw-sat init)
+# Purpose: Auto-append KSW issue reference if on an issue branch
 
 BRANCH=$(git branch --show-current)
 if [[ "$BRANCH" =~ ^issue/([0-9]+)- ]]; then
   ID="${BASH_REMATCH[1]}"
   # Only add if not already referenced
-  if ! grep -q "KWS #$ID" "$1"; then
+  if ! grep -q "KSW #$ID" "$1"; then
     echo "" >> "$1"
-    echo "(KWS #$ID)" >> "$1"
+    echo "(KSW #$ID)" >> "$1"
   fi
 fi
 ```
@@ -276,18 +276,18 @@ fi
 
 **Summary**:
 - **AGENTS.md** = *What* to capture and *how* to negotiate (judgment, intent)
-- **Agent Hooks** = *When* to think about KWS (lifecycle triggers)
+- **Agent Hooks** = *When* to think about KSW (lifecycle triggers)
 - **Git Hooks** = *Track* progress and *persist* state (mechanical reliability)
 
 ---
 
-## .kws-link.yaml (Satellite Config)
+## .ksw-link.yaml (Satellite Config)
 
 ```yaml
-# Created by: /kws-sat init
+# Created by: /ksw-sat init
 hub:
   platform: "gitlab"           # gitlab | github
-  project_path: "user/kws-hub" # Full path to KWS repo (same as kws.yaml#instance.project_path)
+  project_path: "user/ksw-hub" # Full path to KSW repo (same as ksw.yaml#instance.project_path)
   default_branch: "main"
 
 identity:
@@ -297,14 +297,14 @@ identity:
 preferences:
   default_domain: "engineering" # Pre-fill domain for new issues
   progress_interval: 5          # Comment every N commits on issue branch (git hook)
-  auto_issue_ref: true          # prepare-commit-msg appends (KWS #ID) on issue branches
+  auto_issue_ref: true          # prepare-commit-msg appends (KSW #ID) on issue branches
 
 active_claims: []               # Issue IDs currently being worked in this workspace
 ```
 
 ### Authentication
 
-Mirrors KWS hub exactly — no tokens stored in config. Auth is delegated to the platform CLI:
+Mirrors KSW hub exactly — no tokens stored in config. Auth is delegated to the platform CLI:
 
 - **GitLab**: `glab auth status` must pass (user runs `glab auth login` once per machine)
 - **GitHub**: `gh auth status` must pass (user runs `gh auth login` once per machine)
@@ -321,42 +321,42 @@ Commands split into two categories:
 
 | Command | Action |
 |---------|--------|
-| `/kws-sat init` | Install all mechanisms — config, AGENTS.md, hooks, git hooks |
-| `/kws-sat uninstall` | Remove all installed artifacts, disconnect from hub |
-| `/kws-sat update` | Re-run hook installation (after skill version update) |
+| `/ksw-sat init` | Install all mechanisms — config, AGENTS.md, hooks, git hooks |
+| `/ksw-sat uninstall` | Remove all installed artifacts, disconnect from hub |
+| `/ksw-sat update` | Re-run hook installation (after skill version update) |
 
 ### On-Demand (explicit operations)
 
 | Command | Action |
 |---------|--------|
-| `/kws-sat board` | Show current task board from hub |
-| `/kws-sat claim <ID>` | Claim a ready issue, create local branch |
-| `/kws-sat done <ID>` | Mark issue complete (→ review) |
-| `/kws-sat blocked <ID> <reason>` | Mark issue blocked |
-| `/kws-sat release <ID>` | Unclaim issue (→ ready) |
-| `/kws-sat new <title>` | Create new issue on hub (inbox) |
-| `/kws-sat log <ID> <note>` | Add progress note to issue |
-| `/kws-sat contribute <path>` | Push a wiki page/decision to hub |
-| `/kws-sat status` | Show what this workspace is working on |
-| `/kws-sat brief` | Fetch and display the latest morning brief |
+| `/ksw-sat board` | Show current task board from hub |
+| `/ksw-sat claim <ID>` | Claim a ready issue, create local branch |
+| `/ksw-sat done <ID>` | Mark issue complete (→ review) |
+| `/ksw-sat blocked <ID> <reason>` | Mark issue blocked |
+| `/ksw-sat release <ID>` | Unclaim issue (→ ready) |
+| `/ksw-sat new <title>` | Create new issue on hub (inbox) |
+| `/ksw-sat log <ID> <note>` | Add progress note to issue |
+| `/ksw-sat contribute <path>` | Push a wiki page/decision to hub |
+| `/ksw-sat status` | Show what this workspace is working on |
+| `/ksw-sat brief` | Fetch and display the latest morning brief |
 
 On-demand commands exist for when the user/agent needs explicit control, but the default flow is that the three mechanisms handle everything passively.
 
 ---
 
-## /kws-sat init — Full Installation Flow
+## /ksw-sat init — Full Installation Flow
 
 1. **Detect platform CLI**: Check which is available — `glab auth status` or `gh auth status`
    - If neither authenticated → fail with: "Run `glab auth login` or `gh auth login` first"
-   - If both present → ask user which platform hosts their KWS hub
+   - If both present → ask user which platform hosts their KSW hub
 2. Ask user for hub project path (or detect from git remotes)
-3. Verify hub project exists and has KWS labels: `glab label list -R <path> | grep "state:inbox"`
-   - If no KWS labels found → warn: "Hub doesn't appear to have KWS initialized. Run `/kws init` in the hub first."
+3. Verify hub project exists and has KSW labels: `glab label list -R <path> | grep "state:inbox"`
+   - If no KSW labels found → warn: "Hub doesn't appear to have KSW initialized. Run `/ksw init` in the hub first."
 4. Ask for workspace name (default: current directory name)
 5. Ask for default domain (list available from hub labels: `glab label list -R <path> | grep "domain:"`)
-6. **Write `.kws-link.yaml`** (config)
-7. **Append to `.gitignore`**: `.kws-link.yaml` (personal config, not shared)
-8. **Augment AGENTS.md**: Append KWS Satellite section (create file if missing)
+6. **Write `.ksw-link.yaml`** (config)
+7. **Append to `.gitignore`**: `.ksw-link.yaml` (personal config, not shared)
+8. **Augment AGENTS.md**: Append KSW Satellite section (create file if missing)
 9. **Install agent hooks**:
    - Detect which AI tools are configured in workspace (`.claude/`, `.opencode/`, `.cursor/`)
    - Install appropriate hook files for each detected tool
@@ -371,25 +371,25 @@ On-demand commands exist for when the user/agent needs explicit control, but the
 ### Post-Init Output
 
 ```
-KWS Satellite initialized.
+KSW Satellite initialized.
 
-Hub: user/kws-hub (GitLab)
+Hub: user/ksw-hub (GitLab)
 Workspace: frontend-app
 Domain: engineering
 
 Installed:
-  ✓ .kws-link.yaml (config)
-  ✓ AGENTS.md (KWS Satellite section appended)
-  ✓ .opencode/hooks/kws-satellite.yaml (session lifecycle)
+  ✓ .ksw-link.yaml (config)
+  ✓ AGENTS.md (KSW Satellite section appended)
+  ✓ .opencode/hooks/ksw-satellite.yaml (session lifecycle)
   ✓ .git/hooks/post-commit (progress tracking)
   ✓ .git/hooks/post-merge (completion detection)
   ✓ .git/hooks/prepare-commit-msg (issue ref injection)
 
-This workspace is now tracked by KWS. All future AI sessions
-will have KWS context, and git operations will report progress
+This workspace is now tracked by KSW. All future AI sessions
+will have KSW context, and git operations will report progress
 to hub issues automatically.
 
-On-demand commands: /kws-sat board, claim, done, new, contribute
+On-demand commands: /ksw-sat board, claim, done, new, contribute
 ```
 
 ---
@@ -406,16 +406,16 @@ On-demand commands: /kws-sat board, claim, done, new, contribute
 
 ## Future Considerations (v2+)
 
-- **Multi-hub**: `.kws-link.yaml` supports array of hubs
+- **Multi-hub**: `.ksw-link.yaml` supports array of hubs
 - **Offline queue**: Buffer issue operations locally, sync when connected
-- **Hub-side awareness**: KWS hub's morning brief auto-discovers satellites from issue comments
+- **Hub-side awareness**: KSW hub's morning brief auto-discovers satellites from issue comments
 - **Satellite health check**: Hub can ping satellites for status (via issue metadata)
 - **Cross-satellite coordination**: Multiple satellites working on related issues get context about each other
 
 ## Skill File Structure
 
 ```
-kws-satellite/
+ksw-satellite/
 ├── SKILL.md              ← The installable skill (init + on-demand commands)
 ├── README.md             ← Usage docs
 ├── AGENTS.md             ← Contributor guide (for skill development)
@@ -434,12 +434,12 @@ kws-satellite/
     └── protocol.md       ← How satellite interacts with hub coordination protocol
 ```
 
-## Relationship to KWS Skill
+## Relationship to KSW Skill
 
-| Concern | KWS (Hub) | kws-satellite |
+| Concern | KSW (Hub) | ksw-satellite |
 |---------|-----------|---------------|
 | Primary role | System of record | Installer + bridge |
-| Init result | Full KWS system | Persistent hooks in workspace |
+| Init result | Full KSW system | Persistent hooks in workspace |
 | Needed after init? | Yes (ongoing operations) | No (artifacts persist) |
 | Manage domains/sources | Yes | No |
 | Issue lifecycle | Full state machine | Consume + contribute |
@@ -453,33 +453,33 @@ kws-satellite/
 1. **Hook coexistence**: If workspace already has git hooks (husky, lint-staged), how do we play nice? (Recommendation: append with clearly marked sections, or use `.git/hooks/` directory approach if git 2.36+ core.hooksPath supports it)
 2. **Sparse clone caching**: For `/contribute`, maintain persistent sparse clone or fresh each time? (Trade-off: disk vs latency)
 3. **AGENTS.md ownership**: If workspace already has AGENTS.md, how much do we append? (Recommendation: minimal section with link to full protocol, keep it under 40 lines)
-4. **Hook updates**: When the satellite skill updates (new hook logic), how does `kws-sat update` handle existing customizations? (Recommendation: versioned guard comments, replace only between markers)
+4. **Hook updates**: When the satellite skill updates (new hook logic), how does `ksw-sat update` handle existing customizations? (Recommendation: versioned guard comments, replace only between markers)
 5. **Multiple AI tools**: If workspace has both `.claude/` and `.opencode/`, install hooks for all? (Recommendation: yes, detect and install for all found)
 
 ## Implementation Phases
 
 ### Phase 1: Core Installation (MVP)
-- `/kws-sat init` — full installation flow
-- `/kws-sat uninstall` — clean removal
+- `/ksw-sat init` — full installation flow
+- `/ksw-sat uninstall` — clean removal
 - Git hooks: post-commit progress tracking
 - AGENTS.md augmentation (universal)
-- `/kws-sat board` and `/kws-sat claim`/`done` (on-demand fallback)
+- `/ksw-sat board` and `/ksw-sat claim`/`done` (on-demand fallback)
 
 ### Phase 2: Agent Hook Integration
 - OpenCode hooks (session start/end)
 - Claude Code hooks (CLAUDE.md + hooks.json)
 - Cursor rules integration
-- `/kws-sat contribute` (sparse clone flow)
+- `/ksw-sat contribute` (sparse clone flow)
 
 ### Phase 3: Polish & Automation
 - `prepare-commit-msg` auto-reference
 - `post-merge` completion detection
-- `/kws-sat update` (hook versioning)
+- `/ksw-sat update` (hook versioning)
 - Hub brief integration (satellite activity appears in morning brief)
 
 ## Success Criteria
 
-- After `/kws-sat init`, a workspace is permanently tracked by KWS with zero ongoing skill dependency
+- After `/ksw-sat init`, a workspace is permanently tracked by KSW with zero ongoing skill dependency
 - AI agent sessions automatically show active claims and prompt for knowledge contribution
 - Git commits on issue branches automatically report progress to hub without AI involvement
 - Branch merges automatically transition issue state

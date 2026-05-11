@@ -1,12 +1,12 @@
-# Design Note: Three-Mechanism Approach for KWS Hub
+# Design Note: Three-Mechanism Approach for KSW Hub
 
-> Apply the same install-once architecture (AGENTS.md + agent hooks + git hooks) to the main KWS `/init` command.
+> Apply the same install-once architecture (AGENTS.md + agent hooks + git hooks) to the main KSW `/init` command.
 
 ## Context
 
-The satellite skill uses persistent installed artifacts so workspaces are "tracked forever" after init. The same principle applies to the hub itself — currently `/kws init` generates AGENTS.md but relies entirely on the agent re-reading it each session. No lifecycle hooks, no mechanical git automation.
+The satellite skill uses persistent installed artifacts so workspaces are "tracked forever" after init. The same principle applies to the hub itself — currently `/ksw init` generates AGENTS.md but relies entirely on the agent re-reading it each session. No lifecycle hooks, no mechanical git automation.
 
-## Proposed Addition to `/kws init`
+## Proposed Addition to `/ksw init`
 
 After Step 7 (commit), add:
 
@@ -17,7 +17,7 @@ After Step 7 (commit), add:
 
 ### AGENTS.md (already exists — enhance)
 
-Current AGENTS.md tells agents about KWS structure and commands. Enhance with:
+Current AGENTS.md tells agents about KSW structure and commands. Enhance with:
 
 - Active system state awareness (not just structure)
 - Proactive maintenance prompts (stale items, overdue pulls)
@@ -47,7 +47,7 @@ on_session_end:
 | `post-merge` | Branch merged to main | Close related issue, trigger issue-to-wiki if `type:decision` |
 | `pre-push` | Before pushing to remote | Run wiki lint, warn on broken wikilinks |
 | `post-checkout` | Switch to issue branch | Display issue context (title, description, priority) |
-| `commit-msg` | Commit message written | Validate format matches KWS conventions |
+| `commit-msg` | Commit message written | Validate format matches KSW conventions |
 
 ### Differences from Satellite
 
@@ -64,12 +64,12 @@ on_session_end:
 This would add ~30-40 lines to the `/init` section:
 - Hook installation steps (detect AI tools, write hook files)
 - Git hook installation (with coexistence logic for husky/lint-staged)
-- A new `hooks/` directory in the KWS project structure (templates)
+- A new `hooks/` directory in the KSW project structure (templates)
 
 ## Open Questions
 
 1. Should hub git hooks be committed to the repo (shared with team) or local-only (`.git/hooks/`)? Team mode likely wants shared hooks via husky or similar.
-2. Agent hooks vary by tool — should KWS maintain templates for all major tools, or just AGENTS.md (universal) + one reference implementation?
+2. Agent hooks vary by tool — should KSW maintain templates for all major tools, or just AGENTS.md (universal) + one reference implementation?
 3. How do hub hooks interact with `coordination.mode: solo` vs `team`? Solo mode might skip the pre-push lint gate.
 
 ## Priority

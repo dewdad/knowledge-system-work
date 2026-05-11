@@ -9,8 +9,8 @@
 - `wiki/_graph/orphans.md` auto-generated orphan report
 - **markitdown integration** — optional `pip install markitdown[all]` for ingesting Office, PDF, images, audio
 - Step 0 in wiki-ingest: auto-convert non-markdown files via markitdown before processing
-- `kws.yaml#wiki.graph` toggle for auto-rebuild after ingest/synthesize
-- `kws.yaml#tools.markitdown` config (auto/disabled/path)
+- `ksw.yaml#wiki.graph` toggle for auto-rebuild after ingest/synthesize
+- `ksw.yaml#tools.markitdown` config (auto/disabled/path)
 
 ### Changed
 - Wiki-synthesize now uses `graph.json` when available (graceful degradation to grep)
@@ -34,8 +34,8 @@
 - `/init` command that bootstraps complete system in any git repo
 - `/add-domain`, `/add-source`, `/triage`, `/pull`, `/ingest`, `/synthesize`, `/review`, `/brief`, `/status` commands
 - Platform command abstraction table (glab/gh/local equivalents)
-- Local queue mode (`.kws/queue/` with markdown task files)
-- Inline schemas for kws.yaml, domain.yaml, sources.yaml
+- Local queue mode (`.ksw/queue/` with markdown task files)
+- Inline schemas for ksw.yaml, domain.yaml, sources.yaml
 - AGENTS.md template generation during /init
 
 ### Removed
@@ -53,7 +53,7 @@
 - AGENT_BOOTSTRAP.md entry point
 - Folder structure: coordination/, skills/, scripts/, schemas/, templates/
 - Source/feed system schema and pull protocol
-- Bootstrap scripts for LifeOS instances (bash + PowerShell)
+- Bootstrap scripts for KSW instances (bash + PowerShell)
 - CI pipeline fragments (wiki, source, maintenance)
 - GitLab issue/MR templates
 - Domain and source configuration schemas
