@@ -14,6 +14,7 @@ Skills are markdown-based instructions that agents load and follow for specific 
 | [issue-to-wiki](issue-to-wiki/SKILL.md) | Closed issue → decision record | Issue closed |
 | [wiki-to-issue](wiki-to-issue/SKILL.md) | Wiki gap → actionable issue | On wiki analysis |
 | [morning-brief](morning-brief/SKILL.md) | Generate daily summary | Daily scheduled |
+| **[kws](/SKILL.md)** | **Installable agent skill — /init bootstraps full KWS** | **`/kws init` or install via skillshare** |
 
 ## Skill Format
 

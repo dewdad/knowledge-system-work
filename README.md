@@ -1,64 +1,103 @@
 # Knowledge Work System (KWS)
 
-Reusable orchestration substrate for AI agent-driven knowledge, project, and task management. Consumed as a git submodule (`.system/`) inside LifeOS instance repositories.
+Installable AI agent skill for bootstrapping a complete knowledge management, project coordination, and task orchestration system in any git repository.
 
 ## What It Does
 
-- **Agent Coordination** — Work-locking via GitLab issues so multiple agents never collide
-- **Skills Library** — Markdown-based instructions agents load for specific tasks (triage, synthesis, source-pull, etc.)
-- **Automation Scripts** — Setup, maintenance, and CI scripts for instance lifecycle
-- **Schemas** — YAML validation for instance config, sources, and domains
-- **Templates** — GitLab CI fragments, issue/MR templates, instance scaffolding
+One `/init` command gives you:
 
-## Quick Start (for LifeOS instances)
+- **Structured knowledge base** — Obsidian-compatible wiki with concepts, entities, decisions, synthesis
+- **Source ingestion pipeline** — RSS, YouTube, APIs, Git repos → issues → wiki pages
+- **Agent coordination** — State machine for parallel work (solo or team mode)
+- **Domain-driven organization** — Life/work domains with goals, sources, reviews
+- **Daily operations** — Morning briefs, domain reviews, cross-domain synthesis
 
+## Install
+
+### Skillshare
 ```bash
-# Add KWS as a submodule in your LifeOS instance
-git submodule add https://github.com/dewdad/knowledge-system-work.git .system
-
-# Bootstrap the instance (creates labels, board, folder structure)
-.system/scripts/setup/bootstrap.sh
-
-# Agents start here:
-cat .system/AGENT_BOOTSTRAP.md
+skillshare install kws --source github:dewdad/knowledge-system-work
 ```
+
+### OpenCode
+```bash
+# Copy or symlink SKILL.md into your skills directory
+cp SKILL.md ~/.config/opencode/skills/kws/SKILL.md
+```
+
+### Claude Code
+```bash
+# Add to .claude/skills/ in your project or global config
+cp SKILL.md ~/.claude/skills/kws.md
+```
+
+### Manual
+Copy `SKILL.md` from this repo into your AI client's skill directory.
+
+## Usage
+
+Once installed, tell your AI agent:
+
+```
+/kws init
+```
+
+This bootstraps the full system in your current project. Then:
+
+```
+/kws add-domain health
+/kws add-source health rss huberman-lab
+/kws pull
+/kws triage
+/kws brief
+```
+
+## Platform Support
+
+| Platform | CLI | Features |
+|----------|-----|----------|
+| **GitLab** | `glab` | Full issue coordination, labels, MR workflow |
+| **GitHub** | `gh` | Full issue coordination, labels, PR workflow |
+| **Local** | none | Filesystem queue, no external service needed |
+
+## Modes
+
+- **Solo** — No locking, direct commits OK, filesystem queue
+- **Team** — Full coordination protocol, branch + MR/PR required, stale lock recovery
 
 ## Repository Structure
 
 ```
-coordination/       Agent locking protocol (GitLab issues + glab CLI)
-skills/             Markdown agent instructions (one SKILL.md per skill)
-scripts/            Bash/PowerShell automation
-  setup/            One-time instance initialization
-  maintenance/      Periodic tasks (source-pull, lint, upgrade)
-schemas/            YAML schemas for validation
-templates/
-  ci/               GitLab CI pipeline fragments
-  gitlab/           Issue and MR templates
-  instance/         Scaffolding for new instances
-.dev/               Internal architecture documentation
+SKILL.md              ← The installable skill (this is the product)
+reference/            ← Supporting documentation
+  coordination/       ← Protocol specs (state machine, labels, recovery)
+  schemas/            ← YAML schema definitions
+  templates/          ← Issue/MR templates, CI fragments
+  workflows/          ← Detailed per-workflow documentation
+  architecture/       ← System design docs
 ```
+
+## Commands Reference
+
+| Command | Action |
+|---------|--------|
+| `/kws init` | Bootstrap full system in project root |
+| `/kws add-domain <name>` | Add a knowledge domain |
+| `/kws add-source <domain> <type> <id>` | Add source feed to domain |
+| `/kws pull [domain]` | Pull from sources |
+| `/kws triage` | Auto-label inbox items |
+| `/kws ingest <path>` | Process raw material into wiki |
+| `/kws synthesize` | Cross-domain pattern detection |
+| `/kws review <domain>` | Domain health check |
+| `/kws brief` | Generate status summary |
+| `/kws status` | System state overview |
 
 ## Requirements
 
-- **Git** with submodule support
-- **glab** CLI (GitLab CLI) — authenticated against the target GitLab instance
-- **Bash** (Linux, macOS, WSL, Git Bash) or **PowerShell 7+** (Windows)
-- A GitLab project as the LifeOS instance host
-
-## How Agents Work
-
-1. Agent reads `AGENT_BOOTSTRAP.md`
-2. Checks for available work: `glab issue list --label "state:ready" --assignee ""`
-3. Claims an issue (assign + `state:wip` label)
-4. Works on branch `issue/<ID>-<slug>`
-5. Creates MR, transitions to `state:review`
-
-See `coordination/PROTOCOL.md` for the full protocol and `coordination/states.yaml` for the state machine.
-
-## Versioning
-
-Version tracked in `VERSION` file (semver). Breaking schema changes bump the minor version. See `CHANGELOG.md` for release history.
+- **Git** — initialized repository
+- **One of**: `glab` (GitLab), `gh` (GitHub), or neither (local mode)
+- **Bash** or **PowerShell 7+** for shell commands
+- An AI agent that supports markdown skills
 
 ## License
 
