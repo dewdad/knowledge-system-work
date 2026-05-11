@@ -1,6 +1,6 @@
 # Knowledge Work System (KSW)
 
-> AI-native knowledge management and productivity nexus. Domain-driven source ingestion, structured wiki, issue coordination, and synthesis — all orchestrated by agents.
+> AI-native knowledge management. Domain-driven source ingestion, structured wiki, issue coordination, and synthesis — orchestrated by agents.
 
 ## When to Use
 
@@ -8,7 +8,6 @@
 - User references domains, sources, wiki pages, triage, morning brief, synthesis
 - User asks to "pull sources", "triage inbox", "review domain", "generate brief"
 - User wants structured knowledge capture from any input (articles, videos, notes, exports)
-- User asks to convert issues to decisions or wiki gaps to tasks
 
 ## Commands
 
@@ -17,7 +16,7 @@
 | `/init` | Bootstrap full KSW in current project root |
 | `/add-domain <name>` | Add a new knowledge domain |
 | `/add-source <domain> <type> <id>` | Add source to a domain |
-| `/triage` | Run issue triage on inbox items |
+| `/triage` | Classify and prioritize inbox items |
 | `/pull [domain]` | Pull from sources (all or specific domain) |
 | `/ingest <path>` | Process raw material into wiki |
 | `/synthesize` | Cross-domain pattern detection |
@@ -30,11 +29,10 @@
 
 ## /init — Bootstrap Knowledge Work System
 
-Creates the complete folder structure, configuration, and AGENTS.md in the current project root.
+Creates the complete workspace: folder structure, configuration, operational docs, and platform integration.
 
-### Prerequisites Check
+### Prerequisites
 
-Before bootstrapping, verify:
 ```bash
 # Git initialized?
 git rev-parse --is-inside-work-tree
@@ -44,13 +42,12 @@ glab auth status   # GitLab
 gh auth status     # GitHub
 # OR: local mode (no CLI needed)
 
-# Optional tools (enhances ingest — not required)
+# Optional (enhances ingest)
 markitdown --version  # pip install markitdown[all]
 ```
 
 ### Step 1: Detect Platform
 
-Check which platform CLI is available:
 - `glab` present + authenticated → platform: gitlab
 - `gh` present + authenticated → platform: github
 - Neither → platform: local (filesystem-only queue)
@@ -61,34 +58,38 @@ Ask user to confirm if both are present.
 
 ```
 <project_root>/
-├── .ksw/                    ← System metadata (gitignored internals)
-│   ├── queue/               ← Local task queue (platform:local mode)
-│   ├── state/               ← Pull state, sync state
-│   └── cache/               ← Temporary processing cache
-├── domains/                 ← Per-domain config + sources
-├── wiki/                    ← Obsidian-compatible knowledge base
-│   ├── _meta/               ← System pages (briefs, insights, manifests)
-│   │   └── briefs/          ← Morning brief archive
-│   ├── concepts/            ← Concept/pattern pages
-│   ├── entities/            ← People, tools, organizations
-│   ├── decisions/           ← Decision records (ADR-style)
-│   ├── projects/            ← Per-project knowledge
-│   ├── synthesis/           ← Cross-domain insights
-│   └── _graph/              ← Wikilink graph index (auto-generated)
-├── raw/                     ← Immutable source material (any format)
+├── .ksw/
+│   ├── queue/               ← Local task queue (platform:local)
+│   │   ├── inbox/
+│   │   ├── ready/
+│   │   ├── wip/
+│   │   ├── done/
+│   │   └── blocked/
+│   ├── workflows/           ← Generated workflow docs (agent reads these)
+│   ├── state/
+│   └── cache/
+├── domains/
+├── wiki/
+│   ├── _meta/
+│   │   └── briefs/
+│   ├── concepts/
+│   ├── entities/
+│   ├── decisions/
+│   ├── projects/
+│   ├── synthesis/
+│   └── _graph/
+├── raw/
 │   ├── papers/
 │   ├── transcripts/
 │   ├── exports/
 │   └── screenshots/
-├── ksw.yaml                 ← Instance configuration
-└── AGENTS.md                ← Agent entry point (generated)
+├── ksw.yaml
+└── AGENTS.md
 ```
 
-Create ALL directories. Use `mkdir -p` (bash) or `New-Item -Force` (PowerShell).
+Create ALL directories with `mkdir -p` (bash) or `New-Item -Force` (PowerShell).
 
 ### Step 3: Generate ksw.yaml
-
-Write `ksw.yaml` to project root with detected platform and user identity:
 
 ```yaml
 # ksw.yaml — Knowledge Work System Configuration
@@ -105,12 +106,11 @@ identity:
   locale: "en-US"
 
 domains: []
-  # Add via: /ksw add-domain <name>
 
 coordination:
-  mode: "<solo|team>"           # solo = no locking, team = full protocol
+  mode: "<solo|team>"
   default_branch: main
-  mr_required: true             # team mode only
+  mr_required: true
   stale_wip_timeout_minutes: 30
   max_parallel_agents: 3
 
@@ -121,22 +121,31 @@ scheduling:
   weekly_review: "0 20 * * 0"
 
 wiki:
-  format: obsidian             # obsidian | markdown
+  format: obsidian
   wikilinks: true
   frontmatter: true
-  graph: true                  # auto-rebuild graph on ingest/synthesize
+  graph: true
 
-tools:                           # optional external tools (auto-detected)
-  markitdown: auto             # auto | path | disabled
+tools:
+  markitdown: auto    # auto | path | disabled
 ```
 
 ### Step 4: Generate AGENTS.md
 
-Write `AGENTS.md` to project root. Use the template from the **AGENTS.md Template** section below.
+Write `AGENTS.md` to project root containing:
+
+1. **System Overview** — "This project uses KSW. Flow: Sources → Issues/Queue → Wiki → Synthesis"
+2. **Quick Start** — Read ksw.yaml, check for work, claim+branch+do+review
+3. **Structure** — Directory tree with descriptions (from Step 2)
+4. **Domains** — Auto-list from ksw.yaml
+5. **Workflows Table** — Command/trigger/description for all workflows
+6. **Coordination Rules** — Platform, mode, branch naming (`ksw/<ID>-<slug>`), lock rules
+7. **Wiki Format** — Obsidian markdown, wikilinks, frontmatter, one-concept-per-page
+8. **Reference** — "Read `.ksw/workflows/<name>.md` for detailed execution steps"
 
 ### Step 5: Create .gitignore entries
 
-Append to `.gitignore` (create if missing):
+Append to `.gitignore`:
 ```
 # KSW internals
 .ksw/cache/
@@ -144,120 +153,95 @@ Append to `.gitignore` (create if missing):
 secrets/
 ```
 
-### Step 6: Platform Setup (conditional)
+### Step 6: Platform Setup
 
-#### If platform: gitlab
-```bash
-# Create labels
-glab label create "state:inbox" --color "#E4E669" --description "New, untriaged"
-glab label create "state:ready" --color "#0E8A16" --description "Triaged, available"
-glab label create "state:wip" --color "#D93F0B" --description "In progress"
-glab label create "state:review" --color "#0052CC" --description "MR open"
-glab label create "state:blocked" --color "#B60205" --description "Blocked"
-glab label create "P0:critical" --color "#B60205" --description "Immediate"
-glab label create "P1:high" --color "#D93F0B" --description "This week"
-glab label create "P2:medium" --color "#FBCA04" --description "This sprint"
-glab label create "P3:low" --color "#0E8A16" --description "Backlog"
-glab label create "type:task" --color "#FBCA04" --description "Actionable work"
-glab label create "type:research" --color "#5319E7" --description "Investigation"
-glab label create "type:decision" --color "#D93F0B" --description "Needs decision"
-glab label create "type:maintenance" --color "#C5DEF5" --description "Housekeeping"
-glab label create "type:source-item" --color "#BFD4F2" --description "From source pull"
-```
+Create all coordination labels:
 
-#### If platform: github
-```bash
-gh label create "state:inbox" --color "E4E669" --description "New, untriaged"
-gh label create "state:ready" --color "0E8A16" --description "Triaged, available"
-gh label create "state:wip" --color "D93F0B" --description "In progress"
-gh label create "state:review" --color "0052CC" --description "MR/PR open"
-gh label create "state:blocked" --color "B60205" --description "Blocked"
-gh label create "P0:critical" --color "B60205" --description "Immediate"
-gh label create "P1:high" --color "D93F0B" --description "This week"
-gh label create "P2:medium" --color "FBCA04" --description "This sprint"
-gh label create "P3:low" --color "0E8A16" --description "Backlog"
-gh label create "type:task" --color "FBCA04" --description "Actionable work"
-gh label create "type:research" --color "5319E7" --description "Investigation"
-gh label create "type:decision" --color "D93F0B" --description "Needs decision"
-gh label create "type:maintenance" --color "C5DEF5" --description "Housekeeping"
-gh label create "type:source-item" --color "BFD4F2" --description "From source pull"
-```
+| Label | Color | Description |
+|-------|-------|-------------|
+| `state:inbox` | `#E4E669` | New, untriaged |
+| `state:ready` | `#0E8A16` | Triaged, available |
+| `state:wip` | `#D93F0B` | In progress |
+| `state:review` | `#0052CC` | MR/PR open |
+| `state:blocked` | `#B60205` | Blocked |
+| `P0:critical` | `#B60205` | Immediate |
+| `P1:high` | `#D93F0B` | This week |
+| `P2:medium` | `#FBCA04` | This sprint |
+| `P3:low` | `#0E8A16` | Backlog |
+| `type:task` | `#FBCA04` | Actionable work |
+| `type:research` | `#5319E7` | Investigation |
+| `type:decision` | `#D93F0B` | Needs decision |
+| `type:maintenance` | `#C5DEF5` | Housekeeping |
+| `type:source-item` | `#BFD4F2` | From source pull |
 
-#### If platform: local
-Create the local queue structure:
-```
-.ksw/queue/
-├── inbox/        ← New items (markdown files)
-├── ready/        ← Triaged, available
-├── wip/          ← In progress
-├── done/         ← Completed (archive)
-└── blocked/      ← Waiting on dependency
-```
+**Platform commands:**
+- GitLab: `glab label create "<label>" --color "<color>" --description "<desc>"`
+- GitHub: `gh label create "<label>" --color "<color without #>" --description "<desc>"`
+- Local: Create `.ksw/queue/` subdirectories (done in Step 2)
 
-Each queue item is a markdown file:
-```markdown
+For local mode, each queue item is a markdown file with frontmatter:
+```yaml
 ---
 id: "<YYYYMMDD-HHMMSS-slug>"
 title: "<title>"
 domain: "<domain>"
-type: "<task|research|decision|maintenance|source-item>"
-priority: "<P0|P1|P2|P3>"
+type: "<type>"
+priority: "<P0-P3>"
+state: "<inbox|ready|wip|blocked|done>"
 created: "<ISO8601>"
-assigned: "<agent_name or empty>"
 ---
-
-## Description
-
-<content>
-
-## Notes
-
-<progress notes appended here>
 ```
 
-### Step 7: Commit
+### Step 7: Generate Workflow Documentation
 
-```bash
-git add .
-git commit -m "feat: initialize Knowledge Work System (KSW)"
-```
+Create `.ksw/workflows/` with these files. Each file follows the pattern:
+**Trigger → Steps → Error Handling → Commit convention**.
+Include platform-specific commands per the Platform Command Reference below.
 
-### Post-Init Output
+| File | Purpose | Key Steps |
+|------|---------|-----------|
+| `source-pull.md` | Pull new items from domain sources | Select domains → read sources.yaml → check schedule against pulls.json → pull by type (RSS: fetch+parse XML, YouTube: yt-dlp --flat-playlist, API: HTTP GET, Git: API commits/releases) → create inbox items with labels → update pull state → commit |
+| `issue-triage.md` | Classify and prioritize inbox items | List state:inbox items → for each: determine domain (keyword match to ksw.yaml domains), type (action verb→task, question→research, choose→decision, cleanup→maintenance), priority (urgency→P0, deadline→P1, default→P2, exploratory→P3) → apply labels + transition inbox→ready → add triage note with rationale. Ambiguous: add `needs:clarification`, leave in inbox. Batch: group by domain, apply in bulk. |
+| `wiki-ingest.md` | Process raw material into wiki pages | Convert non-md files (markitdown if available) → extract knowledge units → classify (concept/entity/decision/project/synthesis) → resolve against existing wiki (merge or create) → write page with Obsidian frontmatter → cross-link with wikilinks → rebuild graph → commit |
+| `wiki-synthesize.md` | Cross-domain pattern detection | Load graph index (or grep fallback) → inventory pages → detect patterns (3+ domain concepts, orphans, contradictions, inconsistent tags) → generate synthesis pages in wiki/synthesis/ → update _meta/_insights.md → create issues for actionable findings → rebuild graph |
+| `graph-build.md` | Rebuild wikilink graph index | Scan wiki/*.md → extract frontmatter + outgoing [[wikilinks]] → build adjacency list → compute stats (incoming/outgoing counts, orphans, most-connected top 10, domain/category counts) → write wiki/_graph/graph.json → write wiki/_graph/orphans.md → report summary. Zero-LLM, deterministic. |
+| `domain-review.md` | Weekly domain health check | Check source health (stale/broken in pulls.json) → issue health (count by state, stalled items) → wiki coverage (pages, recency) → generate report markdown → create issues for problems found |
+| `issue-to-wiki.md` | Closed issues → wiki decision records | Read closed issue (type:decision or significant) → create ADR-style wiki page (Context/Decision/Rationale/Consequences) → cross-link bidirectionally → commit |
+| `wiki-to-issue.md` | Wiki gaps → actionable issues | Identify gap from synthesis/orphans/review → classify (gap→research, contradiction→decision, missing→task) → create issue with wiki context → update wiki page with issue link |
+| `morning-brief.md` | Daily system state summary | Gather: due items, in-flight, completed (24h), blocked, queue depth → source status (overdue pulls) → wiki activity (24h modifications) → compose brief (<50 lines) → write to wiki/_meta/briefs/YYYY-MM-DD.md |
 
-After bootstrapping, display:
+### Step 8: Completion
+
+Output confirmation:
 ```
 KSW initialized successfully.
 
-Platform: <gitlab|github|local>
-Mode: <solo|team>
+Platform: <platform>
+Mode: <mode>
 Config: ksw.yaml
+Workflow docs: .ksw/workflows/
 
 Next steps:
   1. Add a domain:    /ksw add-domain health
   2. Add a source:    /ksw add-source health rss examine-research
   3. Pull sources:    /ksw pull
   4. Check status:    /ksw status
-
-Read AGENTS.md for the full operational protocol.
 ```
 
 ---
 
 ## /add-domain — Add Knowledge Domain
 
-### Steps
-
-1. Read domain name from argument
-2. Validate: lowercase, alphanumeric + hyphens, no spaces
-3. Create directory structure:
+1. Validate name: lowercase, alphanumeric + hyphens, no spaces
+2. Create structure:
    ```
    domains/<name>/
-   ├── domain.yaml        ← Domain metadata
-   ├── sources.yaml       ← Source feeds (empty initially)
+   ├── domain.yaml
+   ├── sources.yaml
    └── .state/
-       └── pulls.json     ← Pull state tracker (empty object)
+       └── pulls.json    ← {}
    ```
-4. Create `domains/<name>/domain.yaml`:
+3. Write `domains/<name>/domain.yaml`:
    ```yaml
    name: <name>
    description: "<ask user or infer>"
@@ -267,32 +251,22 @@ Read AGENTS.md for the full operational protocol.
    wiki_path: "wiki/projects/<name>"
    related_domains: []
    ```
-5. Create `domains/<name>/sources.yaml`:
+4. Write `domains/<name>/sources.yaml`:
    ```yaml
    domain: <name>
    sources: []
-     # Add via: /ksw add-source <domain> <type> <id>
    ```
-6. Create `domains/<name>/.state/pulls.json`:
-   ```json
-   {}
-   ```
-7. Create wiki project folder: `wiki/projects/<name>/`
-8. Update `ksw.yaml` — add domain name to `domains:` list
-9. Create platform label:
-   - GitLab: `glab label create "domain:<name>" --color "<color>"`
-   - GitHub: `gh label create "domain:<name>" --color "<color>"`
-   - Local: no action needed
-10. Regenerate AGENTS.md (update domains section)
-11. Commit: `git commit -m "feat: add domain <name>"`
+5. Create `wiki/projects/<name>/`
+6. Update `ksw.yaml` → add to `domains:` list
+7. Create platform label: `domain:<name>` with assigned color
+8. Regenerate AGENTS.md domains section
+9. Commit: `git commit -m "feat: add domain <name>"`
 
 ---
 
 ## /add-source — Add Source to Domain
 
-### Steps
-
-1. Parse: `<domain> <type> <id>` (type: rss|youtube|api|git|email|chat|calendar|manual)
+1. Parse: `<domain> <type> <id>` — type: rss|youtube|api|git|email|chat|calendar|manual
 2. Validate domain exists in `domains/`
 3. Prompt for type-specific fields:
    - **rss**: url
@@ -304,14 +278,11 @@ Read AGENTS.md for the full operational protocol.
    ```yaml
    - id: <id>
      type: <type>
-     pull_schedule: daily    # ask user
+     pull_schedule: daily
      auto_triage: true
      <type_specific_fields>
    ```
-5. Initialize pull state in `.state/pulls.json`:
-   ```json
-   { "<id>": { "last_pull": null, "items_pulled": 0, "items_triaged": 0 } }
-   ```
+5. Initialize in `.state/pulls.json`: `{ "<id>": { "last_pull": null, "items_pulled": 0 } }`
 6. Commit: `git commit -m "feat(<domain>): add source <id>"`
 
 ---
@@ -323,381 +294,84 @@ All workflows use this abstraction. Pick commands based on `ksw.yaml#instance.pl
 | Action | GitLab (`glab`) | GitHub (`gh`) | Local |
 |--------|-----------------|---------------|-------|
 | List inbox | `glab issue list --label "state:inbox"` | `gh issue list --label "state:inbox"` | `ls .ksw/queue/inbox/` |
-| List ready | `glab issue list --label "state:ready" --assignee ""` | `gh issue list --label "state:ready" --assignee ""` | `ls .ksw/queue/ready/` |
+| List ready | `glab issue list --label "state:ready"` | `gh issue list --label "state:ready"` | `ls .ksw/queue/ready/` |
 | Create issue | `glab issue create --title "..." --label "..."` | `gh issue create --title "..." --label "..."` | Create `.ksw/queue/inbox/<id>.md` |
 | Claim (assign+wip) | `glab issue update <ID> --assignee "@me" --unlabel "state:ready" --label "state:wip"` | `gh issue edit <ID> --add-assignee "@me" --remove-label "state:ready" --add-label "state:wip"` | `mv .ksw/queue/ready/<file> .ksw/queue/wip/` |
 | Complete (→review) | `glab issue update <ID> --unlabel "state:wip" --label "state:review"` | `gh issue edit <ID> --remove-label "state:wip" --add-label "state:review"` | `mv .ksw/queue/wip/<file> .ksw/queue/done/` |
-| Close | `glab issue close <ID>` | `gh issue close <ID>` | `mv to done/ + add closed_at frontmatter` |
-| View issue | `glab issue view <ID>` | `gh issue view <ID>` | `cat .ksw/queue/*/<id>.md` |
+| Close | `glab issue close <ID>` | `gh issue close <ID>` | `mv to done/ + add closed_at` |
 | Add comment | `glab issue note <ID> --message "..."` | `gh issue comment <ID> --body "..."` | Append to `## Notes` section |
+| Apply labels | `glab issue update <ID> --label "x" --unlabel "y"` | `gh issue edit <ID> --add-label "x" --remove-label "y"` | Edit frontmatter |
 
 ---
 
-## Workflow: Source Pull
-
-> Pull new items from domain sources and create issues/queue items.
-
-### Trigger
-- Scheduled (per `ksw.yaml#scheduling.source_pull`)
-- Manual: `/ksw pull [domain]`
-- After adding a new source
-
-### Steps
-
-1. **Select domains**: All (if no argument) or specified domain
-2. **For each domain**, read `domains/<domain>/sources.yaml`
-3. **For each source**, check pull state against schedule:
-   - Read `.state/pulls.json` → get `last_pull` timestamp
-   - Compare against `pull_schedule` (hourly=1h, daily=24h, weekly=7d)
-   - Skip if not due (unless forced)
-4. **Pull by type**:
-   - **RSS**: Fetch feed URL, parse XML/Atom, extract items newer than `last_pull`
-   - **YouTube**: Use `yt-dlp --flat-playlist --dump-json` on channel/playlist, filter by date
-   - **API**: HTTP GET to endpoint (use auth from `auth_ref` if specified), apply `transform` script
-   - **Git**: `gh api repos/<repo>/commits?since=<last_pull>` (or releases/issues per `events`)
-   - **Manual**: Skip (user drops files in `raw/`)
-5. **For each new item** (if `auto_triage: true`):
-   - Apply `filter_keywords` if specified (skip non-matching)
-   - Create issue/queue item with labels: `state:inbox, domain:<domain>, type:source-item, source:<id>`
-   - Title format: `[<domain>] <item_title>`
-6. **Update pull state**: Set `last_pull`, increment counters
-7. **Commit state**: `git add domains/<domain>/.state/ && git commit -m "chore(<domain>): source pull"`
-
-### Error Handling
-- Source unreachable → increment `consecutive_failures`, log `last_error`
-- After 5 consecutive failures → create `type:maintenance` issue for broken source
-- Never let one source failure block others
-
----
-
-## Workflow: Issue Triage
-
-> Auto-label and prioritize inbox items.
-
-### Trigger
-- New items appear in inbox
-- Manual: `/ksw triage`
-- After source-pull creates items
-
-### Steps
-
-1. **List inbox items** (platform-appropriate command)
-2. **For each item**, read title + description and determine:
-   - **Domain**: Match keywords to configured domains in `ksw.yaml`
-   - **Type**: task (action verb) | research (question/investigate) | decision (choose/decide) | maintenance (cleanup)
-   - **Priority**: P0 (explicit urgency) | P1 (deadline) | P2 (default) | P3 (nice-to-have)
-3. **Apply labels** and transition inbox → ready
-4. **Add triage note**: Brief rationale for classification
-5. **Ambiguous cases**: Add `needs:clarification` label, leave in inbox
-
-### Heuristics
-- Source items default to P2 unless filter_keywords match a high-priority pattern
-- Items with deadlines mentioned → P1 minimum
-- Items mentioning multiple domains → use primary, note secondary in comment
-
----
-
-## Workflow: Wiki Ingest
-
-> Process raw material into structured wiki pages.
-
-### Trigger
-- File dropped in `raw/` or `wiki/_raw/`
-- Manual: `/ksw ingest <path>`
-- After research produces notes
-
-### Steps
-
-0. **Convert non-markdown files** (if markitdown available):
-   ```bash
-   # Check if markitdown is available
-   command -v markitdown >/dev/null 2>&1 || { echo "markitdown not found, skipping conversion"; }
-
-   # Supported conversion targets:
-   #   .docx .pptx .xlsx .pdf .html .csv .json .jpg .png .mp3 .wav .zip
-   #
-   # Convert each non-.md file in raw/ to .md alongside the original:
-   for file in raw/**/*.{docx,pptx,xlsx,pdf,html,csv,json,jpg,png,mp3,wav}; do
-     [ -f "$file" ] || continue
-     OUT="${file%.*}.md"
-     [ -f "$OUT" ] && continue  # already converted
-     markitdown "$file" > "$OUT"
-     # Add conversion metadata as frontmatter
-     sed -i "1i---\nsource_file: \"$(basename "$file")\"\nconverted: \"$(date -Is)\"\nconverter: markitdown\n---\n" "$OUT"
-   done
-   ```
-   **If markitdown is not installed**: Skip this step. Agent processes only `.md` and `.txt` files natively using its own reading capability. Non-markdown files remain in `raw/` until a converter is available.
-
-1. **Identify source material**: Read file at path (supports .md, .txt, .pdf, .json, .html, .csv — and any format markitdown supports if installed)
-2. **Extract knowledge units**: Parse into discrete facts/concepts/decisions
-3. **Classify each unit**:
-   | Type | Location | Example |
-   |------|----------|---------|
-   | Concept/Pattern | `wiki/concepts/` | "Event-driven architecture" |
-   | Person/Tool/Org | `wiki/entities/` | "Andrew Huberman" |
-   | Decision | `wiki/decisions/` | "Chose Postgres over MySQL" |
-   | Project-specific | `wiki/projects/<project>/` | "API design v2" |
-   | Cross-domain | `wiki/synthesis/` | "Sleep affects productivity" |
-4. **Resolve against existing wiki**: `grep -r "<concept>" wiki/ --include="*.md" -l`
-   - Exists → merge into existing page
-   - Doesn't exist → create new page
-   - Contradicts → note conflict, create decision issue
-5. **Write page** with Obsidian frontmatter:
-   ```markdown
-   ---
-   title: "<Title>"
-   category: <concept|entity|decision|project|synthesis>
-   domain: <domain>
-   tags: [<tags>]
-   source: "<raw/filename>"
-   created: "YYYY-MM-DD"
-   updated: "YYYY-MM-DD"
-   ---
-
-   # <Title>
-
-   <Content>
-
-   ## Related
-   - [[linked-page]]
-   ```
-6. **Cross-link**: Scan for unlinked mentions, add `[[wikilinks]]`
-7. **Rebuild graph** (if `ksw.yaml#wiki.graph: true`): Run `/ksw graph-build`
-8. **Commit**: `git commit -m "docs: ingest <source_filename>"`
-
-### Quality Rules
-- One concept per page (no mega-pages)
-- Always wikilink existing pages
-- Source attribution in frontmatter
-- No duplication
-
----
-
-## Workflow: Wiki Synthesize
-
-> Cross-domain pattern detection and insight generation.
-
-### Trigger
-- Weekly scheduled
-- After 10+ new wiki pages
-- Manual: `/ksw synthesize`
-
-### Steps
-
-1. **Load graph index** (if available):
-   ```bash
-   # Prefer pre-built graph for speed; fall back to grep if missing
-   if [ -f wiki/_graph/graph.json ]; then
-     # Use graph.json for orphans, most-connected, domain stats
-     ORPHANS=$(jq -r '.stats.orphans[]' wiki/_graph/graph.json)
-     MOST_CONNECTED=$(jq -r '.stats.most_connected[].slug' wiki/_graph/graph.json)
-   else
-     # Fallback: run /ksw graph-build first, or use grep below
-   fi
-   ```
-2. **Inventory**: Count pages per section, list recently modified
-3. **Pattern detection**:
-   - Concepts in 3+ domains → synthesis candidate
-   - Entities referenced by multiple projects → needs global page
-   - Inconsistent tags → taxonomy cleanup needed
-   - Contradictions → flag for decision
-   - Orphans (zero incoming links) → needs integration
-4. **Find most-linked pages** (from graph or grep):
-   - Graph: `jq '.stats.most_connected' wiki/_graph/graph.json`
-   - Grep fallback: `grep -roh '\[\[.*\]\]' wiki/ | sort | uniq -c | sort -rn`
-5. **Find orphans** (from graph or scan):
-   - Graph: `jq '.stats.orphans' wiki/_graph/graph.json`
-   - Grep fallback: Pages with no incoming wikilinks (full scan)
-6. **Generate synthesis pages** in `wiki/synthesis/`:
-   ```markdown
-   ---
-   title: "<Pattern>"
-   category: synthesis
-   domains: [<d1>, <d2>]
-   created: "YYYY-MM-DD"
-   ---
-   # <Pattern>
-   ## Observation
-   ## Evidence
-   ## Implications
-   ## Open Questions
-   ```
-7. **Update** `wiki/_meta/_insights.md` with findings
-8. **Create issues** for actionable insights (use wiki-to-issue logic)
-9. **Rebuild graph**: Run `/ksw graph-build` after synthesis creates new pages/links
-
----
-
-## /graph-build — Rebuild Wikilink Graph Index
-
-> Parse all `[[wikilinks]]` from wiki pages into a queryable adjacency list. Zero-cost, deterministic, no LLM.
-
-### Trigger
-- After `/ksw ingest` (new pages created)
-- After `/ksw synthesize` (new links/pages)
-- Manual: `/ksw graph-build`
-- Optionally auto-triggered when `ksw.yaml#wiki.graph: true`
-
-### Steps
-
-1. **Scan all wiki pages**:
-   ```bash
-   find wiki/ -name "*.md" -not -path "wiki/_graph/*"
-   ```
-
-2. **For each page, extract**:
-   - Frontmatter: `title`, `category`, `domain`, `tags`
-   - Outgoing links: all `[[target]]` references (including `[[target|alias]]`)
-   - Filename slug (used as node ID): basename without `.md`
-
-3. **Build adjacency list**:
-   ```bash
-   # Extract all wikilinks from a file
-   grep -oP '\[\[([^\]|]+)' "$file" | sed 's/\[\[//' | sort -u
-   ```
-
-4. **Compute metadata**:
-   - `incoming_count`: number of pages linking TO this node
-   - `outgoing_count`: number of links FROM this node
-   - `orphans`: nodes with zero incoming links (excluding _meta/)
-   - `most_connected`: top 10 by total degree (incoming + outgoing)
-
-5. **Write `wiki/_graph/graph.json`**:
-   ```json
-   {
-     "version": "1.0",
-     "generated": "<ISO8601 timestamp>",
-     "node_count": 0,
-     "edge_count": 0,
-     "nodes": {
-       "<slug>": {
-         "title": "<from frontmatter or filename>",
-         "path": "<relative path from project root>",
-         "category": "<concept|entity|decision|project|synthesis>",
-         "domain": "<domain or null>",
-         "tags": [],
-         "outgoing": ["<target_slug>", "..."],
-         "incoming": ["<source_slug>", "..."]
-       }
-     },
-     "stats": {
-       "orphans": ["<slug>", "..."],
-       "most_connected": [{"slug": "<slug>", "degree": 0}, "..."],
-       "domains": {"<domain>": {"pages": 0, "internal_edges": 0}},
-       "categories": {"concept": 0, "entity": 0, "decision": 0, "project": 0, "synthesis": 0}
-     }
-   }
-   ```
-
-6. **Write `wiki/_graph/orphans.md`** (human-readable):
-   ```markdown
-   # Orphaned Pages — <date>
-   Pages with no incoming links (not referenced by any other page):
-   - [[<slug>]] (<category>, <domain>)
-   ```
-
-7. **Report**: Print summary — node count, edge count, orphans found, top connected nodes.
-
-### Usage by Other Workflows
-
-- **wiki-synthesize**: Read `graph.json` → find clusters, orphans, high-degree nodes instead of grepping
-- **domain-review**: Read `stats.domains.<domain>` for coverage metrics
-- **morning-brief**: Include graph health (orphan count trend, new connections)
-
-### Graceful Degradation
-
-If `wiki/_graph/graph.json` does not exist, all workflows fall back to `grep -r` patterns. The graph is an optimization, never a hard dependency.
-
----
-
-## Workflow: Domain Review
-
-> Weekly health check on a specific domain.
-
-### Trigger
-- Scheduled per `domain.yaml#review_schedule`
-- Manual: `/ksw review <domain>`
-
-### Steps
-
-1. **Source health**: Check `.state/pulls.json` for stale/broken sources
-2. **Issue health**: Count by state (ready/wip/blocked), check for stalled items
-3. **Wiki coverage**: Pages in domain wiki section, recency of updates
-4. **Generate report**:
-   ```markdown
-   # Domain Review: <domain> — YYYY-MM-DD
-   ## Sources: N/M active
-   ## Queue: N ready, N wip, N blocked
-   ## Wiki: N pages, last updated YYYY-MM-DD
-   ## Health: [Good|Warning|Critical]
-   ## Recommendations: [actions]
-   ```
-5. **Create issues** for problems found (broken sources → maintenance, stale items → task)
-
----
-
-## Workflow: Issue to Wiki
-
-> Closed issues with decisions/knowledge → wiki decision records.
-
-### Trigger
-- Issue with `type:decision` closed
-- Significant task closed with pattern-establishing resolution
-- Manual: after closing an important issue
-
-### Steps
-
-1. **Read closed issue** (title, description, comments, labels)
-2. **Determine wiki location**: decisions/ for decisions, projects/<domain>/ for tasks
-3. **Create wiki page** with ADR-style structure (Context → Decision → Rationale → Consequences)
-4. **Cross-link** bidirectionally
-5. **Commit**: `git commit -m "docs: decision from issue #<ID>"`
-
----
-
-## Workflow: Wiki to Issue
-
-> Wiki gaps/contradictions → actionable issues.
-
-### Trigger
-- Synthesis reveals actionable gap
-- Contradictions found
-- Domain review identifies missing coverage
-
-### Steps
-
-1. **Identify actionable insight** from `_insights.md`, synthesis pages, or orphans
-2. **Classify**: knowledge gap → research | contradiction → decision | missing impl → task
-3. **Create issue** with context linking back to wiki source
-4. **Update wiki page** with link to new issue (bidirectional)
-
----
-
-## Workflow: Morning Brief
-
-> Daily system state summary.
-
-### Trigger
-- Scheduled daily
-- Manual: `/ksw brief`
-
-### Steps
-
-1. **Gather**: Due items, in-flight work, completed (24h), blocked, queue depth
-2. **Source status**: Overdue pulls, new items from last pull
-3. **Wiki activity**: Pages modified in 24h
-4. **Compose brief** (< 50 lines, scannable):
-   ```markdown
-   # Brief — YYYY-MM-DD
-   ## Priority Work (P0/P1 due soon)
-   ## In Flight
-   ## Completed (24h)
-   ## Blocked
-   ## Queue: N ready (M high priority)
-   ## Sources: overdue pulls
-   ## Recommendations
-   ```
-5. **Deliver**: Write to `wiki/_meta/briefs/YYYY-MM-DD.md`
+## Workflow Summaries
+
+Detailed execution steps live in `.ksw/workflows/*.md` (generated by `/init`).
+These summaries provide routing context for the agent.
+
+### Source Pull (`/pull [domain]`)
+
+Pull new items from domain sources into the inbox.
+**Trigger**: Scheduled, manual, or after adding a new source.
+**Flow**: For each domain → read sources.yaml → check if due (pulls.json vs schedule) → pull by source type → create inbox items with `state:inbox, domain:<d>, type:source-item` → update pull state → commit.
+**Error**: Source unreachable → log, increment failures, after 5 → create maintenance issue. Never block other sources.
+
+### Issue Triage (`/triage`)
+
+Classify and prioritize all inbox items.
+**Trigger**: After source-pull, new items appear, or manual.
+**Flow**: List all `state:inbox` items → for each, determine:
+- **Domain**: Match content keywords to configured domains
+- **Type**: action verb→task | question→research | choose/decide→decision | cleanup→maintenance
+- **Priority**: explicit urgency→P0 | deadline→P1 | default→P2 | exploratory→P3
+
+Apply labels, transition `state:inbox` → `state:ready`, add triage note with rationale.
+**Ambiguous**: Add `needs:clarification` label, leave in inbox.
+**Batch**: Group by domain, apply in bulk. Source items default to P2.
+
+### Wiki Ingest (`/ingest <path>`)
+
+Process raw material into structured wiki pages.
+**Trigger**: File in `raw/`, manual, or after research.
+**Flow**: Convert non-md (markitdown if available) → extract knowledge units → classify (concept/entity/decision/project/synthesis) → resolve against existing wiki (merge or create new) → write with Obsidian frontmatter + wikilinks → rebuild graph → commit.
+**Rules**: One concept per page. Always wikilink. Source attribution in frontmatter. No duplication.
+
+### Wiki Synthesize (`/synthesize`)
+
+Cross-domain pattern detection and insight generation.
+**Trigger**: Weekly, after 10+ new wiki pages, or manual.
+**Flow**: Load graph index (fallback: grep) → detect patterns (concepts in 3+ domains, orphans, contradictions, inconsistent tags) → generate synthesis pages → update `_meta/_insights.md` → create issues for actionable findings → rebuild graph.
+
+### Graph Build (`/graph-build`)
+
+Rebuild wikilink graph index. Zero-LLM, deterministic.
+**Trigger**: After ingest, after synthesize, or manual.
+**Flow**: Scan `wiki/**/*.md` → extract frontmatter + `[[wikilinks]]` → build adjacency list → compute stats (orphans, most-connected, domain/category counts) → write `wiki/_graph/graph.json` + `wiki/_graph/orphans.md`.
+**Graceful degradation**: If graph.json missing, all workflows fall back to grep. Graph is optimization, never hard dependency.
+
+### Domain Review (`/review <domain>`)
+
+Weekly health check on a specific domain.
+**Trigger**: Scheduled per domain.yaml, or manual.
+**Flow**: Check source health (stale/broken) → issue health (count by state, stalled items) → wiki coverage (pages, recency) → generate report → create issues for problems.
+
+### Issue to Wiki (automatic)
+
+Closed issues with decisions/knowledge → wiki decision records.
+**Trigger**: Issue with `type:decision` closed, or significant task closed.
+**Flow**: Read closed issue → create ADR-style wiki page (Context/Decision/Rationale/Consequences) → cross-link → commit.
+
+### Wiki to Issue (automatic)
+
+Wiki gaps or contradictions → actionable issues.
+**Trigger**: Synthesis reveals gap, contradiction found, or review identifies missing coverage.
+**Flow**: Identify actionable insight → classify (gap→research, contradiction→decision, missing→task) → create issue with wiki context → update wiki with issue link.
+
+### Morning Brief (`/brief`)
+
+Daily system state summary.
+**Trigger**: Scheduled daily, or manual.
+**Flow**: Gather due items, in-flight, completed (24h), blocked, queue depth → source status → wiki activity → compose brief (<50 lines) → write to `wiki/_meta/briefs/YYYY-MM-DD.md`.
 
 ---
 
@@ -711,223 +385,74 @@ state:inbox → state:ready → state:wip → state:review → (closed/done)
                         state:blocked
 ```
 
-### Rules (Team Mode)
+### Team Mode Rules
 
-1. **Never push directly to default branch** — Always branch + MR/PR
-2. **One issue = one branch** — Named `issue/<ID>-<slug>` (or `ksw/<ID>-<slug>`)
-3. **Claim before working** — Assign + `state:wip`
-4. **Release if stuck** — Unassign + back to `state:ready`
-5. **WIP locks expire** after `stale_wip_timeout_minutes` (default 30)
+1. Never push directly to default branch — branch + MR/PR
+2. One issue = one branch — named `ksw/<ID>-<slug>`
+3. Claim before working — assign + `state:wip`
+4. Release if stuck — unassign + back to `state:ready`
+5. WIP locks expire after `stale_wip_timeout_minutes` (default 30)
 
-### Rules (Solo Mode)
+### Solo Mode Rules
 
 1. Move files between queue directories to transition state
-2. No locking needed — you're the only agent
+2. No locking — single agent
 3. Branch workflow optional (direct commits OK)
-4. MR/PR optional
 
 ### Stale Lock Recovery
 
-- WIP items older than timeout → auto-release to ready
-- Partial work preserved on branch
-- Run: check `.ksw/queue/wip/` for stale items (modified time > timeout)
+WIP items older than timeout → auto-release to ready. Partial work preserved on branch.
 
 ---
 
 ## /status — System State Overview
 
-Quick health snapshot:
-
-```bash
-# Counts
-echo "Domains: $(ls domains/ | wc -l)"
-echo "Queue: inbox=$(count inbox) ready=$(count ready) wip=$(count wip) blocked=$(count blocked)"
-echo "Wiki pages: $(find wiki/ -name '*.md' -not -path 'wiki/_*' | wc -l)"
-echo "Last brief: $(ls wiki/_meta/briefs/ | sort | tail -1)"
-echo "Last pull: $(find domains/ -name 'pulls.json' -exec jq -r '.[].last_pull' {} \; | sort | tail -1)"
-```
+Report:
+- Domains: count from `domains/`
+- Queue: count per state (inbox/ready/wip/blocked)
+- Wiki pages: count `.md` files in `wiki/` (excluding `_graph/`, `_meta/`)
+- Last brief: most recent in `wiki/_meta/briefs/`
+- Last pull: most recent `last_pull` from any `pulls.json`
+- Graph: node/edge count from `graph.json` (if exists)
 
 ---
 
-## AGENTS.md Template
-
-When `/init` runs, generate this as `AGENTS.md` in the project root:
-
-```markdown
-# AGENTS.md
-
-> Entry point for AI agents working in this knowledge system. Read this first.
-
-## System Overview
-
-This project uses the **Knowledge Work System (KSW)** for structured knowledge management.
-Everything flows through: **Sources → Issues/Queue → Wiki → Synthesis**
-
-## Quick Start
-
-1. Read `ksw.yaml` for configuration (platform, domains, scheduling)
-2. Check for work: [platform-specific command for listing ready items]
-3. Claim work, do it on a branch, submit for review
-4. Capture decisions in wiki (issue-to-wiki)
-
-## Structure
-
-```
-ksw.yaml                 ← System configuration
-domains/                 ← Per-domain sources and state
-wiki/                    ← Knowledge base (Obsidian format)
-  concepts/              ← Patterns and ideas
-  entities/              ← People, tools, orgs
-  decisions/             ← Decision records
-  projects/              ← Per-domain project knowledge
-  synthesis/             ← Cross-domain insights
-  _meta/                 ← Briefs, manifests, insights
-  _graph/                ← Auto-generated wikilink index
-raw/                     ← Immutable source material (any format)
-.ksw/                    ← System state (queue, cache)
-```
-
-## Domains
-
-[AUTO-GENERATED: List configured domains from ksw.yaml]
-
-## Available Workflows
-
-| Workflow | Trigger | Command |
-|----------|---------|---------|
-| Source Pull | Scheduled/manual | `/ksw pull` |
-| Triage | After pull/manual | `/ksw triage` |
-| Wiki Ingest | File in raw/ | `/ksw ingest <path>` |
-| Graph Build | After ingest/manual | `/ksw graph-build` |
-| Synthesize | Weekly/manual | `/ksw synthesize` |
-| Domain Review | Weekly/manual | `/ksw review <domain>` |
-| Issue→Wiki | Issue closed | automatic |
-| Wiki→Issue | Gap found | automatic |
-| Morning Brief | Daily/manual | `/ksw brief` |
-
-## Coordination Rules
-
-- Platform: [gitlab|github|local]
-- Mode: [solo|team]
-- Branch naming: `ksw/<ID>-<slug>`
-- [team mode]: Claim before working, release if stuck, locks expire after N minutes
-- [solo mode]: Direct commits OK, queue is filesystem-based
-
-## Wiki Format
-
-All wiki pages use Obsidian markdown with YAML frontmatter:
-- Use `[[wikilinks]]` for internal links
-- Categories: concept, entity, decision, project, synthesis
-- One concept per page
-- Source attribution in frontmatter
-```
-
-Customize the template by filling in platform-specific commands and actual domain list from `ksw.yaml`.
-
----
-
-## Schemas
-
-### ksw.yaml Schema
+## Schema: ksw.yaml
 
 ```yaml
-# Required fields
 instance:
-  name: string           # Human-readable project name
-  owner: string          # Git username
+  name: string
+  owner: string
   platform: enum[gitlab, github, local]
-  project_path: string   # owner/repo or filesystem path
+  project_path: string
 
 identity:
   timezone: string       # IANA timezone
-  locale: string         # xx-YY format
+  locale: string         # xx-YY
 
-domains: string[]        # List of domain names (match domains/ subdirs)
+domains: string[]
 
 coordination:
   mode: enum[solo, team]
   default_branch: string (default: main)
-  mr_required: boolean (default: true, team mode only)
+  mr_required: boolean (default: true, team only)
   stale_wip_timeout_minutes: integer (10-1440, default: 30)
   max_parallel_agents: integer (1-10, default: 3)
 
-# Optional
-scheduling:
-  source_pull: string    # cron expression
+scheduling:              # cron expressions (advisory — agent checks if due)
+  source_pull: string
   wiki_lint: string
   morning_brief: string
   weekly_review: string
 
 wiki:
-  format: enum[obsidian, markdown] (default: obsidian)
+  format: enum[obsidian, markdown]
   wikilinks: boolean (default: true)
   frontmatter: boolean (default: true)
-  graph: boolean (default: true)   # auto-rebuild graph after ingest/synthesize
+  graph: boolean (default: true)
 
-tools:                             # optional, auto-detected
-  markitdown: enum[auto, disabled] | string (default: auto)
-```
-
-### domain.yaml Schema
-
-```yaml
-name: string             # lowercase, matches directory
-description: string
-color: string            # hex color for labels
-goals: string[]          # high-level objectives
-review_schedule: enum[daily, weekly, biweekly, monthly]
-wiki_path: string        # default: wiki/projects/<name>
-related_domains: string[]
-```
-
-### sources.yaml Schema
-
-```yaml
-domain: string           # must match parent directory
-sources:
-  - id: string           # unique, lowercase
-    type: enum[rss, youtube, api, git, email, chat, calendar, manual]
-    pull_schedule: enum[hourly, daily, weekly, monthly, manual]
-    auto_triage: boolean (default: true)
-    # Type-specific:
-    url: string          # rss, api
-    channel_id: string   # youtube
-    playlist_id: string  # youtube (alternative)
-    endpoint: string     # api
-    auth_ref: string     # path to credential
-    filter_keywords: string[]
-    extract: enum[titles, descriptions, timestamps, full_content, metadata][]
-    transform: string    # path to transform script
-    repo: string         # git (owner/repo)
-    events: enum[commits, releases, issues, pull_requests, tags][]
-```
-
-### graph.json Schema
-
-```json
-{
-  "version": "string (semver, currently 1.0)",
-  "generated": "string (ISO8601 timestamp)",
-  "node_count": "integer",
-  "edge_count": "integer",
-  "nodes": {
-    "<slug>": {
-      "title": "string (from frontmatter or filename)",
-      "path": "string (relative path)",
-      "category": "enum[concept, entity, decision, project, synthesis, null]",
-      "domain": "string | null",
-      "tags": "string[]",
-      "outgoing": "string[] (target slugs)",
-      "incoming": "string[] (source slugs)"
-    }
-  },
-  "stats": {
-    "orphans": "string[] (slugs with zero incoming)",
-    "most_connected": "[{slug, degree}] (top 10 by total links)",
-    "domains": "{ <domain>: { pages: int, internal_edges: int } }",
-    "categories": "{ concept: int, entity: int, decision: int, project: int, synthesis: int }"
-  }
-}
+tools:
+  markitdown: enum[auto, disabled] | string
 ```
 
 ---
@@ -935,10 +460,9 @@ sources:
 ## Notes
 
 - Wiki format is Obsidian-compatible but works with any markdown viewer
-- The local queue mode works without any external service (pure filesystem)
-- All state is in git — no external database needed
-- Scheduling is advisory (agent checks if tasks are due, not a real cron)
-- Core system: no runtime dependencies — shell commands, YAML, and markdown only
-- **Optional tools** enhance capabilities but are never required:
-  - `markitdown` (`pip install markitdown[all]`) — converts Office, PDF, images, audio to markdown during ingest
-  - `wiki/_graph/graph.json` — auto-generated index, speeds up synthesize/review (rebuilt by `/ksw graph-build`)
+- Local queue mode works without any external service (pure filesystem)
+- All state is in git — no external database
+- Scheduling is advisory (agent checks if due, not a real cron)
+- No runtime dependencies — shell commands, YAML, and markdown only
+- **Optional tools**: `markitdown` (converts Office/PDF/images/audio to markdown during ingest)
+- **Graph**: auto-generated index, speeds up synthesize/review — never a hard dependency

@@ -31,7 +31,8 @@ reference/            ← Supporting documentation (not consumed at runtime)
 - The skill supports 3 platforms: GitLab (`glab`), GitHub (`gh`), and local (filesystem-only).
 - The skill supports 2 modes: solo (no locking) and team (full coordination protocol).
 - Reference material in `reference/` informs the SKILL.md content but is NOT deployed with it.
-- All schemas, protocols, and workflow details must be summarized inline in SKILL.md — consumers don't have access to `reference/`.
+- **Architecture**: SKILL.md is a bootstrapper + command router. Detailed workflow instructions are generated as `.ksw/workflows/*.md` during `/init`. SKILL.md contains workflow summaries, not full algorithms.
+- Schemas (domain.yaml, sources.yaml) are self-documented by the `/add-domain` and `/add-source` steps — no separate schema section needed.
 
 ## Working Here
 
@@ -40,7 +41,7 @@ reference/            ← Supporting documentation (not consumed at runtime)
 This is the primary deliverable. Changes here affect all consumers.
 
 - Keep it self-contained — no external file references that consumers won't have
-- Follow the existing section structure: Commands table → /init → /add-domain → workflows → schemas
+- Follow the architecture: bootstrapper + command router (summaries, not algorithms)
 - Platform commands must always show all 3 variants (gitlab/github/local)
 - Test by loading the skill in an AI agent and running `/ksw init`
 
@@ -62,6 +63,7 @@ Changes here don't affect consumers unless you also update SKILL.md.
 ## Conventions
 
 - Commit messages: imperative mood (`Add source-pull retry logic`, not `Added...`)
-- The SKILL.md should remain under 800 lines (currently ~620) — be concise
+- The SKILL.md should remain under 500 lines (currently ~367) — be concise
 - All command examples must be copy-pasteable (no pseudocode in commands)
-- Schemas inline in SKILL.md use simplified format (not full JSON Schema)
+- Workflow detail belongs in generated `.ksw/workflows/*.md`, not SKILL.md
+- Only ksw.yaml schema lives in SKILL.md (needed by /init Step 3)

@@ -21,3 +21,6 @@ tmp/
 
 # Generated output
 graphify-out/
+
+# Agent working state
+.sisyphus/
