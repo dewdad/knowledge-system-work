@@ -1,0 +1,32 @@
+#!/bin/bash
+# [KSW-HUB-HOOK] Auto-comment progress on issue branches
+KSW_YAML="ksw.yaml"
+[ -f "$KSW_YAML" ] || exit 0
+
+command -v yq >/dev/null 2>&1 || { echo "KSW: yq not found; skipping progress hook"; exit 0; }
+
+BRANCH=$(git branch --show-current)
+MSG=$(git log -1 --format=%s)
+
+# Branch name matches ksw/<ID>-* pattern
+if [[ "$BRANCH" =~ ^ksw/([0-9]+)- ]]; then
+  ID="${BASH_REMATCH[1]}"
+  PLATFORM=$(yq -r '.instance.platform' "$KSW_YAML")
+  if [ "$PLATFORM" = "gitlab" ]; then
+    command -v glab >/dev/null 2>&1 || { echo "KSW: glab not found; skipping progress hook"; exit 0; }
+  elif [ "$PLATFORM" = "github" ]; then
+    command -v gh >/dev/null 2>&1 || { echo "KSW: gh not found; skipping progress hook"; exit 0; }
+  else
+    exit 0
+  fi
+  COMMIT_COUNT=$(git rev-list --count main.."$BRANCH" 2>/dev/null || echo "0")
+  # Comment every 5th commit (batch progress, not noisy)
+  if (( COMMIT_COUNT % 5 == 0 )) && (( COMMIT_COUNT > 0 )); then
+    SUMMARY=$(git log --oneline main.."$BRANCH" | tail -5)
+    if [ "$PLATFORM" = "gitlab" ]; then
+      glab issue note "$ID" --message "Progress (${COMMIT_COUNT} commits):\n\`\`\`\n${SUMMARY}\n\`\`\`" || echo "KSW: failed to post progress to issue #$ID"
+    elif [ "$PLATFORM" = "github" ]; then
+      gh issue comment "$ID" --body "Progress (${COMMIT_COUNT} commits):\n\`\`\`\n${SUMMARY}\n\`\`\`" || echo "KSW: failed to post progress to issue #$ID"
+    fi
+  fi
+fi

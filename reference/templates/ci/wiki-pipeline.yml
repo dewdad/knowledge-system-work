@@ -9,22 +9,33 @@ wiki-lint:
   script:
     - echo "Validating wiki structure..."
     - |
-      # Check for broken wikilinks
-      BROKEN=0
-      for file in $(find wiki/ -name "*.md" -type f); do
-        # Extract [[links]] and verify targets exist
-        grep -oP '\[\[([^\]|]+)' "$file" | sed 's/\[\[//' | while read link; do
-          TARGET="wiki/${link}.md"
-          if [ ! -f "$TARGET" ] && [ ! -d "wiki/${link}" ]; then
-            echo "BROKEN LINK: ${file} → [[${link}]]"
-            BROKEN=$((BROKEN + 1))
-          fi
-        done
-      done
-      if [ "$BROKEN" -gt 0 ]; then
-        echo "Found $BROKEN broken wikilinks"
-        exit 1
-      fi
+      python3 - <<'PY'
+      import re
+      import sys
+      from pathlib import Path
+
+      wiki = Path("wiki")
+      pages = [p for p in wiki.rglob("*.md") if "/_graph/" not in p.as_posix()]
+      by_stem = {p.stem.lower(): p for p in pages}
+      by_rel = {p.with_suffix("").as_posix().lower(): p for p in pages}
+      broken = []
+
+      for page in pages:
+          text = page.read_text(encoding="utf-8", errors="ignore")
+          for raw in re.findall(r"\[\[([^\]]+)\]\]", text):
+              target = raw.split("|", 1)[0].split("#", 1)[0].strip()
+              if not target:
+                  continue
+              key = target.replace("\\", "/").lower()
+              if key not in by_rel and key not in by_stem:
+                  broken.append((page, raw))
+
+      for page, raw in broken:
+          print(f"BROKEN LINK: {page} -> [[{raw}]]")
+      if broken:
+          print(f"Found {len(broken)} broken wikilinks")
+          sys.exit(1)
+      PY
     - echo "Wiki validation passed"
 
 wiki-orphan-check:

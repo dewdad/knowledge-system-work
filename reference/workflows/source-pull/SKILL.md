@@ -1,6 +1,6 @@
 # Skill: Source Pull
 
-> Pull new items from domain sources and create actionable GitLab issues.
+> Pull new items from domain sources and create actionable platform issues.
 
 ## When to Use
 
@@ -10,7 +10,7 @@
 
 ## Prerequisites
 
-- `glab` authenticated
+- Platform CLI authenticated (`glab` for GitLab, `gh` for GitHub)
 - Domain exists in `domains/<name>/sources.yaml`
 - Source pull state exists at `domains/<name>/.state/pulls.json` (created on first run)
 
@@ -46,6 +46,18 @@ Parse each source entry. Required fields:
 cat domains/${DOMAIN}/.state/pulls.json
 ```
 
+Before pulling, create a short-lived domain lock so two agents do not ingest the same source concurrently:
+
+```bash
+LOCK="domains/${DOMAIN}/.state/pull.lock"
+if [ -f "$LOCK" ] && [ "$(find "$LOCK" -mmin -30 -print)" ]; then
+  echo "Pull already running for ${DOMAIN}; skip."
+  exit 0
+fi
+printf '%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ) $$" > "$LOCK"
+trap 'rm -f "$LOCK"' EXIT
+```
+
 For each source, check `last_pull` against `pull_schedule`. Skip if not due.
 
 ### 4. Pull New Items (Per Source Type)
@@ -71,11 +83,27 @@ yt-dlp --flat-playlist --dump-json \
 # Apply transform script if specified
 ```
 
+### 4.5 Normalize and De-Duplicate Items
+
+For every pulled item, derive a stable `source_item_id` before creating an issue:
+
+```text
+source_item_id = sha256("<source_id>\n<canonical_url_or_external_id>\n<published_at_or_version>")
+```
+
+Dedup checks, in order:
+1. Skip if `source_item_id` is already present in `pulls.json`.
+2. Search open and closed issues for `source_item_id: <hash>`.
+3. If no platform issue exists, create exactly one issue and include the hash in the body.
+
+Title matching is only a fallback. Feeds often retitle items; URLs and external IDs are more stable.
+
 ### 5. Create Issues for New Items
 
 For each new item (if `auto_triage: true`):
 
 ```bash
+# GitLab
 glab issue create \
   --title "[${DOMAIN}] ${ITEM_TITLE}" \
   --label "state:inbox,domain:${DOMAIN},type:source-item,source:${SOURCE_ID}" \
@@ -85,12 +113,19 @@ glab issue create \
 **Type**: ${SOURCE_TYPE}
 **URL**: ${ITEM_URL}
 **Date**: ${ITEM_DATE}
+**source_item_id**: ${SOURCE_ITEM_ID}
 
 ## Summary
 ${ITEM_SUMMARY}
 
 ---
 _Auto-created by source-pull skill_"
+
+# GitHub
+gh issue create \
+  --title "[${DOMAIN}] ${ITEM_TITLE}" \
+  --label "state:inbox,domain:${DOMAIN},type:source-item,source:${SOURCE_ID}" \
+  --body-file <body.md>
 ```
 
 ### 6. Update Pull State
@@ -100,8 +135,11 @@ _Auto-created by source-pull skill_"
   "<source_id>": {
     "last_pull": "<current_timestamp>",
     "last_item_id": "<newest_item_id>",
+    "seen_item_ids": ["<source_item_id>"],
     "items_pulled": "<total + new>",
-    "items_triaged": "<total + new_issues_created>"
+    "items_triaged": "<total + new_issues_created>",
+    "consecutive_failures": 0,
+    "last_error": null
   }
 }
 ```
@@ -116,13 +154,13 @@ git push
 
 ## Error Handling
 
-- **Source unreachable**: Skip, log warning in issue note, try next source
+- **Source unreachable**: Skip, record `last_error` and increment `consecutive_failures`, try next source
 - **Auth expired**: Create issue `type:maintenance` to refresh credentials
-- **Duplicate detection**: Compare `last_item_id` to avoid re-creating issues
+- **Duplicate detection**: Compare `source_item_id` against pull state and issue bodies before creating issues
 - **Rate limits**: Respect source-specific rate limits, back off exponentially
 
 ## Notes
 
 - Never store secrets in source config — use `auth_ref` pointing to `secrets/`
 - Pull state is git-tracked so all agents see the same last-pull timestamps
-- If two agents run source-pull simultaneously for the same domain, duplicates may occur (mitigate via issue dedup by title)
+- If a lock is stale, remove it only after checking no active pull process or recent commit exists for the same domain

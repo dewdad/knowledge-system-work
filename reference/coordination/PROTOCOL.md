@@ -46,7 +46,7 @@ if [ "$ASSIGNEES" -gt 0 ] || [ -n "$STATE_WIP" ]; then
 fi
 ```
 
-### Claim Sequence (Atomic-ish)
+### Claim Sequence (Verify-After-Write)
 
 ```bash
 # 1. Assign to self + transition to WIP
@@ -61,23 +61,34 @@ git checkout -b "issue/<ID>-${SLUG}"
 
 # 3. Add claim comment (traceability)
 glab issue note <ID> --message "Claimed by agent on $(hostname) at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+# 4. Re-read issue and verify this agent owns the claim
+ISSUE_JSON=$(glab issue view <ID> --output json)
+ASSIGNEES=$(echo "$ISSUE_JSON" | jq -r '.assignees[].username')
+HAS_WIP=$(echo "$ISSUE_JSON" | jq -r '.labels[] | select(. == "state:wip")')
+if [ -z "$HAS_WIP" ] || [ "$(echo "$ASSIGNEES" | wc -l)" -ne 1 ]; then
+  echo "CLAIM UNCERTAIN: release and retry later"
+  glab issue update <ID> --unassignee "@me" --unlabel "state:wip" --label "state:ready"
+  exit 1
+fi
 ```
 
 ### Race Condition Mitigation
 
-GitLab label/assignment updates are NOT atomic. Two agents could claim simultaneously. Mitigation:
+GitLab label/assignment updates are NOT atomic. Two agents can claim simultaneously. Treat every remote mutation as provisional until the issue is re-read.
 
-1. **After claiming**, re-read the issue and verify YOUR assignment stuck
-2. If multiple assignees: the **first commenter** keeps the claim, others release
-3. In practice, with ≤3 agents and distinct domain focus, races are rare
+1. **After claiming**, re-read the issue and verify exactly one assignee and `state:wip`
+2. If multiple assignees or conflicting comments exist, release unless your claim comment is earliest
+3. Do not create branches, edit files, or update local active-claim state until verification succeeds
+4. If verification fails twice, add `needs:coordination` and leave the issue in `state:ready`
 
 ```bash
 # Post-claim verification (paranoia check)
 sleep 2  # Brief delay for GitLab propagation
-CURRENT=$(glab issue view <ID> --output json | jq -r '.assignees[0].username')
-if [ "$CURRENT" != "$(glab auth status --show-token 2>&1 | grep -oP 'Logged in as \K\w+')" ]; then
+ASSIGNEE_COUNT=$(glab issue view <ID> --output json | jq '.assignees | length')
+if [ "$ASSIGNEE_COUNT" -ne 1 ]; then
   echo "RACE LOST: Releasing claim"
-  glab issue update <ID> --unassignee "@me"
+  glab issue update <ID> --unassignee "@me" --unlabel "state:wip" --label "state:ready"
   exit 0
 fi
 ```

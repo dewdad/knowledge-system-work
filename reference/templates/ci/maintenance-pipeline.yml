@@ -48,6 +48,6 @@ nightly-maintenance:
     - if: $CI_PIPELINE_SOURCE == "schedule"
   script:
     - echo "Running nightly maintenance..."
-    - .system/scripts/maintenance/stale-lock-recovery.sh || true
-    - .system/scripts/maintenance/wiki-lint.sh || true
+    - echo "Check stale WIP issues with the platform CLI; generated instances may replace this with a local script."
+    - echo "Run /graph-build or the wiki pipeline to refresh link health."
     - echo "Maintenance complete"

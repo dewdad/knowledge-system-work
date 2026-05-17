@@ -1,0 +1,41 @@
+# .opencode/hooks/ksw-satellite.yaml
+# Installed by /init (satellite mode) — KSW session lifecycle hooks
+
+on_session_start:
+  description: "Load KSW satellite context"
+  run: |
+    KSW_LINK=".ksw-link.yaml"
+    [ -f "$KSW_LINK" ] || exit 0
+    command -v yq >/dev/null 2>&1 || { echo "KSW: yq not found; satellite context unavailable"; exit 0; }
+    HUB=$(yq -r '.hub.project_path' "$KSW_LINK")
+    PLATFORM=$(yq -r '.hub.platform' "$KSW_LINK")
+    SAT_LABEL=$(yq -r '.identity.satellite_label' "$KSW_LINK")
+    echo "=== KSW Satellite Active ==="
+    echo "Hub: $HUB"
+    echo ""
+    echo "Your active claims:"
+    if [ "$PLATFORM" = "gitlab" ] && command -v glab >/dev/null 2>&1; then
+      glab issue list -R "$HUB" --label "$SAT_LABEL,state:wip" --assignee "@me" 2>/dev/null || echo "  (none)"
+    elif [ "$PLATFORM" = "github" ] && command -v gh >/dev/null 2>&1; then
+      gh issue list -R "$HUB" --label "$SAT_LABEL,state:wip" --assignee "@me" 2>/dev/null || echo "  (none)"
+    else
+      echo "  (platform CLI unavailable)"
+    fi
+    echo ""
+    echo "Ready to pick up (routed here):"
+    if [ "$PLATFORM" = "gitlab" ] && command -v glab >/dev/null 2>&1; then
+      glab issue list -R "$HUB" --label "$SAT_LABEL,state:ready" --per-page 5 2>/dev/null || echo "  (none)"
+    elif [ "$PLATFORM" = "github" ] && command -v gh >/dev/null 2>&1; then
+      gh issue list -R "$HUB" --label "$SAT_LABEL,state:ready" --limit 5 2>/dev/null || echo "  (none)"
+    else
+      echo "  (platform CLI unavailable)"
+    fi
+
+on_session_end:
+  description: "KSW satellite wrap-up"
+  prompt: |
+    Before closing, review this session:
+    1. If you worked on a claimed KSW issue, summarize progress:
+       `glab issue note <ID> -R <hub> --message "<summary>"`
+    2. If significant decisions were made, offer to contribute them
+    3. If new work was discovered, offer to create KSW issues with satellite label

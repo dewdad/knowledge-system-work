@@ -1,0 +1,45 @@
+#!/bin/bash
+# [KSW-SAT-HOOK] Auto-comment on claimed issues when commits reference them
+KSW_LINK=".ksw-link.yaml"
+[ -f "$KSW_LINK" ] || exit 0
+
+command -v yq >/dev/null 2>&1 || { echo "KSW: yq not found; skipping progress hook"; exit 0; }
+
+HUB=$(yq -r '.hub.project_path' "$KSW_LINK")
+PLATFORM=$(yq -r '.hub.platform' "$KSW_LINK")
+INTERVAL=$(yq -r '.preferences.progress_interval // 5' "$KSW_LINK")
+MSG=$(git log -1 --format=%s)
+BRANCH=$(git branch --show-current)
+WORKSPACE=$(basename "$PWD")
+
+if [ "$PLATFORM" = "gitlab" ]; then
+  command -v glab >/dev/null 2>&1 || { echo "KSW: glab not found; skipping progress hook"; exit 0; }
+elif [ "$PLATFORM" = "github" ]; then
+  command -v gh >/dev/null 2>&1 || { echo "KSW: gh not found; skipping progress hook"; exit 0; }
+else
+  exit 0
+fi
+
+# Strategy 1: Explicit issue reference in commit message
+if [[ "$MSG" =~ KSW[[:space:]]*#([0-9]+) ]]; then
+  ID="${BASH_REMATCH[1]}"
+  if [ "$PLATFORM" = "gitlab" ]; then
+    glab issue note "$ID" -R "$HUB" --message "Progress from \`${WORKSPACE}\`: $MSG" || echo "KSW: failed to post progress to issue #$ID"
+  else
+    gh issue comment "$ID" -R "$HUB" --body "Progress from \`${WORKSPACE}\`: $MSG" || echo "KSW: failed to post progress to issue #$ID"
+  fi
+fi
+
+# Strategy 2: Branch name matches issue/<ID>-* pattern
+if [[ "$BRANCH" =~ ^issue/([0-9]+)- ]]; then
+  ID="${BASH_REMATCH[1]}"
+  COMMIT_COUNT=$(git rev-list --count main.."$BRANCH" 2>/dev/null || echo "0")
+  if (( COMMIT_COUNT % INTERVAL == 0 )) && (( COMMIT_COUNT > 0 )); then
+    SUMMARY=$(git log --oneline main.."$BRANCH" | tail -5)
+    if [ "$PLATFORM" = "gitlab" ]; then
+      glab issue note "$ID" -R "$HUB" --message "Batch progress from \`${WORKSPACE}\` (${COMMIT_COUNT} commits):\n\`\`\`\n${SUMMARY}\n\`\`\`" || echo "KSW: failed to post batch progress to issue #$ID"
+    else
+      gh issue comment "$ID" -R "$HUB" --body "Batch progress from \`${WORKSPACE}\` (${COMMIT_COUNT} commits):\n\`\`\`\n${SUMMARY}\n\`\`\`" || echo "KSW: failed to post batch progress to issue #$ID"
+    fi
+  fi
+fi

@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.5.0] - 2026-05-11
+
+### Added
+- **Hub/Satellite architecture** — `/init` now asks "Hub or Satellite?" to determine workspace role
+- **Authentication & repo selection** — Step 1 authenticates via `glab auth`/`gh auth` and lets user select or create a KSW repo
+- **Satellite init flow** — Install-once bridge: `.ksw-link.yaml`, AGENTS.md augmentation, agent hooks, git hooks, hub registration
+- **Satellite commands** — `/sat board`, `/sat claim`, `/sat done`, `/sat blocked`, `/sat release`, `/sat new`, `/sat log`, `/sat contribute`, `/sat status`, `/sat brief`
+- **Hub agent hooks** — OpenCode `.opencode/hooks/ksw-hub.yaml` and Claude Code `CLAUDE.md` appendage for session lifecycle (inbox count, stale WIP, brief status, wrap-up prompts)
+- **Hub git hooks** — `post-commit` (batch progress), `post-merge` (state transition), `pre-push` (wikilink lint), `post-checkout` (issue context display)
+- **Satellite agent hooks** — OpenCode/Claude hooks for session awareness (active claims, routed work, wrap-up)
+- **Satellite git hooks** — `post-commit` (progress to hub), `post-merge` (completion detection), `prepare-commit-msg` (auto issue ref)
+- **Dual-label routing** — `satellite:<name>` for workspace routing + `domain:<name>` for semantic context
+- **`reference/hooks/`** directory — Hook templates extracted from SKILL.md for maintainability
+- **Hub registration** — Satellite init registers itself in hub's `ksw.yaml#satellites[]` via sparse checkout
+- `ksw.yaml#instance.mode` field (hub|satellite)
+- `ksw.yaml#satellites[]` array for tracking registered satellite workspaces
+- `.ksw-link.yaml` schema (satellite bridge config)
+- `hub-hooks.md` workflow doc generated during hub init
+- `satellite:<name>` label in platform setup
+
+### Changed
+- `/init` restructured: Step 0 (mode selection) → Step 1 (auth + repo) → mode-specific flow
+- Hub init steps renumbered (2-11) to accommodate new preamble
+- Platform Command Reference split into Hub Operations and Satellite Operations tables
+- AGENTS.md updated with `reference/hooks/` directory, hub/satellite mode documentation
+- Line limit for SKILL.md raised from 500 to 1000 (proportional to doubled scope)
+
 ## [0.3.0] - 2026-05-10
 
 ### Added

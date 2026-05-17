@@ -1,0 +1,65 @@
+# Schema: wiki/**/*.md frontmatter
+# Stable identity and provenance for Obsidian-compatible pages.
+
+type: object
+required: [id, title, category, created, updated]
+
+properties:
+  id:
+    type: string
+    pattern: "^[a-z0-9][a-z0-9-]*$"
+    description: "Stable page identifier; never changes after creation"
+
+  title:
+    type: string
+
+  aliases:
+    type: array
+    items:
+      type: string
+    default: []
+    description: "Alternate names used for duplicate detection and Obsidian search"
+
+  category:
+    type: string
+    enum: [concept, entity, decision, project, synthesis]
+
+  domain:
+    type: string
+    pattern: "^[a-z][a-z0-9-]*$"
+
+  tags:
+    type: array
+    items:
+      type: string
+    default: []
+
+  sources:
+    type: array
+    items:
+      type: object
+      required: [source_id]
+      properties:
+        source_id:
+          type: string
+        path:
+          type: string
+        url:
+          type: string
+        claim_scope:
+          type: string
+          enum: [page, section, inline]
+    default: []
+
+  confidence:
+    type: string
+    enum: [high, medium, low]
+    default: medium
+
+  created:
+    type: string
+    format: date
+
+  updated:
+    type: string
+    format: date

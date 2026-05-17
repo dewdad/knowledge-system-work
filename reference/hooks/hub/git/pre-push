@@ -1,0 +1,36 @@
+#!/bin/bash
+# [KSW-HUB-HOOK] Warn on broken wikilinks before push
+KSW_YAML="ksw.yaml"
+[ -f "$KSW_YAML" ] || exit 0
+
+command -v python3 >/dev/null 2>&1 || {
+  echo "KSW: python3 not found; skipping wikilink check"
+  exit 0
+}
+
+BROKEN=$(python3 - <<'PY'
+import re
+from pathlib import Path
+
+wiki = Path("wiki")
+pages = [p for p in wiki.rglob("*.md") if "/_graph/" not in p.as_posix()]
+by_stem = {p.stem.lower(): p for p in pages}
+by_rel = {p.with_suffix("").as_posix().lower(): p for p in pages}
+
+for page in pages:
+    text = page.read_text(encoding="utf-8", errors="ignore")
+    for raw in re.findall(r"\[\[([^\]]+)\]\]", text):
+        target = raw.split("|", 1)[0].split("#", 1)[0].strip()
+        if not target:
+            continue
+        key = target.replace("\\", "/").lower()
+        if key not in by_rel and key not in by_stem:
+            print(f"{page}: [[{raw}]]")
+PY
+)
+
+if [ -n "$BROKEN" ]; then
+  echo "KSW: Broken wikilinks detected:"
+  echo "$BROKEN" | head -5
+  echo "(push continues; fix with /graph-build)"
+fi

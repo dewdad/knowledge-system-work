@@ -19,19 +19,25 @@ VERSION               ← Semver version
 LICENSE               ← MIT
 reference/            ← Supporting documentation (not consumed at runtime)
   coordination/       ← Protocol specs (state machine, labels, recovery)
+  hooks/              ← Hook templates installed during /init
+    hub/git/          ← Hub git hooks (post-commit, post-merge, pre-push, post-checkout)
+    hub/agents/       ← Hub agent hooks (opencode.yaml, claude.md)
+    satellite/git/    ← Satellite git hooks (post-commit, post-merge, prepare-commit-msg)
+    satellite/agents/ ← Satellite agent hooks (opencode.yaml, claude.md)
   schemas/            ← YAML schema definitions for validation
   templates/          ← Issue/MR templates, CI pipeline fragments
   workflows/          ← Detailed per-workflow documentation (source-pull, triage, etc.)
-  architecture/       ← System design documents
 ```
 
 ## Critical Context
 
 - `SKILL.md` is the ONLY file consumers install. Everything else is development reference.
-- The skill supports 3 platforms: GitLab (`glab`), GitHub (`gh`), and local (filesystem-only).
-- The skill supports 2 modes: solo (no locking) and team (full coordination protocol).
+- The skill supports 3 platforms: GitLab (`glab`), GitHub (`gh`), and local (filesystem-only, hub mode only).
+- The skill supports 2 init modes: **hub** (full system) and **satellite** (bridge to hub).
+- The skill supports 2 coordination modes: solo (no locking) and team (full coordination protocol).
 - Reference material in `reference/` informs the SKILL.md content but is NOT deployed with it.
 - **Architecture**: SKILL.md is a bootstrapper + command router. Detailed workflow instructions are generated as `.ksw/workflows/*.md` during `/init`. SKILL.md contains workflow summaries, not full algorithms.
+- **Hook templates**: `reference/hooks/` contains the actual bash/yaml scripts installed during init. SKILL.md references these as "Templates: `reference/hooks/...`" — the agent reads the template content from reference/ when installing.
 - Schemas (domain.yaml, sources.yaml) are self-documented by the `/add-domain` and `/add-source` steps — no separate schema section needed.
 
 ## Working Here
@@ -40,10 +46,10 @@ reference/            ← Supporting documentation (not consumed at runtime)
 
 This is the primary deliverable. Changes here affect all consumers.
 
-- Keep it self-contained — no external file references that consumers won't have
+- Keep it self-contained — the only allowed external references are to `reference/hooks/` templates (the agent reads these from the skill repo during /init)
 - Follow the architecture: bootstrapper + command router (summaries, not algorithms)
 - Platform commands must always show all 3 variants (gitlab/github/local)
-- Test by loading the skill in an AI agent and running `/ksw init`
+- Test by loading the skill in an AI agent and running `/init`
 
 ### Editing reference/
 
@@ -63,7 +69,8 @@ Changes here don't affect consumers unless you also update SKILL.md.
 ## Conventions
 
 - Commit messages: imperative mood (`Add source-pull retry logic`, not `Added...`)
-- The SKILL.md should remain under 500 lines (currently ~367) — be concise
+- The SKILL.md should remain under 1000 lines (currently ~955) — be concise
+- Hook/script code belongs in `reference/hooks/`, not inline in SKILL.md
 - All command examples must be copy-pasteable (no pseudocode in commands)
 - Workflow detail belongs in generated `.ksw/workflows/*.md`, not SKILL.md
-- Only ksw.yaml schema lives in SKILL.md (needed by /init Step 3)
+- Only ksw.yaml schema lives in SKILL.md (needed by /init Step 4)

@@ -1,0 +1,31 @@
+#!/bin/bash
+# [KSW-SAT-HOOK] Transition issue state when issue branch merges
+KSW_LINK=".ksw-link.yaml"
+[ -f "$KSW_LINK" ] || exit 0
+
+command -v yq >/dev/null 2>&1 || { echo "KSW: yq not found; skipping post-merge hook"; exit 0; }
+
+HUB=$(yq -r '.hub.project_path' "$KSW_LINK")
+PLATFORM=$(yq -r '.hub.platform' "$KSW_LINK")
+BRANCH_ID=$(git log -1 --format=%s | sed -nE 's/.*issue\/([0-9]+).*/\1/p' | head -1)
+WORKSPACE=$(basename "$PWD")
+
+if [ "$PLATFORM" = "gitlab" ]; then
+  command -v glab >/dev/null 2>&1 || { echo "KSW: glab not found; skipping post-merge hook"; exit 0; }
+elif [ "$PLATFORM" = "github" ]; then
+  command -v gh >/dev/null 2>&1 || { echo "KSW: gh not found; skipping post-merge hook"; exit 0; }
+else
+  exit 0
+fi
+
+if [ -n "$BRANCH_ID" ]; then
+  if [ "$PLATFORM" = "gitlab" ]; then
+    glab issue update "$BRANCH_ID" -R "$HUB" --unlabel "state:wip" --label "state:review" || echo "KSW: failed to update issue #$BRANCH_ID"
+    glab issue note "$BRANCH_ID" -R "$HUB" --message "Branch merged in \`${WORKSPACE}\`. Ready for review." || echo "KSW: failed to comment on issue #$BRANCH_ID"
+  else
+    gh issue edit "$BRANCH_ID" -R "$HUB" --remove-label "state:wip" --add-label "state:review" || echo "KSW: failed to update issue #$BRANCH_ID"
+    gh issue comment "$BRANCH_ID" -R "$HUB" --body "Branch merged in \`${WORKSPACE}\`. Ready for review." || echo "KSW: failed to comment on issue #$BRANCH_ID"
+  fi
+  # Remove from active_claims
+  yq -i "del(.active_claims[] | select(. == $BRANCH_ID))" "$KSW_LINK" 2>/dev/null
+fi

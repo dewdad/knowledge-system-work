@@ -13,7 +13,13 @@ additionalProperties:
 
     last_item_id:
       type: string
-      description: "Identifier of the most recent item seen (for dedup)"
+      description: "Source-native identifier of the most recent item seen"
+
+    seen_item_ids:
+      type: array
+      items:
+        type: string
+      description: "Stable source_item_id hashes already processed for this source"
 
     items_pulled:
       type: integer
@@ -26,7 +32,7 @@ additionalProperties:
       description: "Total issues created from this source"
 
     last_error:
-      type: string
+      type: [string, "null"]
       description: "Last error message (null if last pull succeeded)"
 
     consecutive_failures:

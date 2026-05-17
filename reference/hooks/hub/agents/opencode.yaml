@@ -1,0 +1,31 @@
+# .opencode/hooks/ksw-hub.yaml
+# Installed by /init (hub mode) — KSW session lifecycle hooks
+
+on_session_start:
+  description: "Load KSW hub context"
+  run: |
+    echo "=== KSW Hub Active ==="
+    PLATFORM=$(yq -r '.instance.platform // "local"' ksw.yaml 2>/dev/null || echo "local")
+    if [ "$PLATFORM" = "gitlab" ] && command -v glab >/dev/null 2>&1; then
+      echo "Inbox: $(glab issue list --label 'state:inbox' --per-page 100 2>/dev/null | wc -l) items"
+      echo "Stale WIP: check /status for stale lock details"
+    elif [ "$PLATFORM" = "github" ] && command -v gh >/dev/null 2>&1; then
+      echo "Inbox: $(gh issue list --label 'state:inbox' --limit 100 2>/dev/null | wc -l) items"
+      echo "Stale WIP: check /status for stale lock details"
+    else
+      echo "Platform automation unavailable; use local queue or run /status"
+    fi
+    echo ""
+    BRIEF=$(ls wiki/_meta/briefs/ 2>/dev/null | tail -1)
+    if [ -n "$BRIEF" ] && [ "$BRIEF" != "$(date +%Y-%m-%d).md" ]; then
+      echo "No brief generated today. Run /brief?"
+    fi
+
+on_session_end:
+  description: "KSW hub wrap-up"
+  prompt: |
+    Before closing, check:
+    1. If wiki pages were created/edited → offer to run /graph-build
+    2. If issues were worked → verify state transitions are clean
+    3. If decisions were made → prompt /ingest for decision records
+    4. If source pulls are overdue → remind user

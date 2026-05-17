@@ -43,8 +43,9 @@ Before creating a new page:
 grep -r "<concept>" wiki/ --include="*.md" -l
 ```
 
-- **Exists**: Merge new information into existing page
-- **Doesn't exist**: Create new page
+- **Exists**: Merge new information into existing page and append source references
+- **Alias match**: If any page frontmatter `aliases` contains the concept, merge there
+- **Doesn't exist**: Create new page with a stable `id`
 - **Contradicts existing**: Note contradiction, create issue for resolution
 
 ### 4. Write Wiki Page
@@ -53,11 +54,17 @@ Follow Obsidian markdown format:
 
 ```markdown
 ---
+id: "<category>-<slug>-<short-hash>"
 title: "<Page Title>"
+aliases: ["<alternate name>"]
 category: concept | entity | decision | project | synthesis
 domain: <domain_name>
 tags: [tag1, tag2]
-source: "<raw/filename.ext>"
+sources:
+  - source_id: "<source_item_id_or_raw_filename>"
+    path: "<raw/filename.ext>"
+    claim_scope: "page|section|inline"
+confidence: high | medium | low
 created: "YYYY-MM-DD"
 updated: "YYYY-MM-DD"
 ---
@@ -69,6 +76,9 @@ updated: "YYYY-MM-DD"
 ## Related
 - [[link-to-related-page]]
 - [[another-related-page]]
+
+## Sources
+- `<source_id>` — <what this source supports>
 ```
 
 ### 5. Cross-Link
@@ -76,7 +86,8 @@ updated: "YYYY-MM-DD"
 After creating/updating pages:
 1. Scan for unlinked mentions of existing wiki pages
 2. Add `[[wikilinks]]` where appropriate
-3. Update the source page's "Related" section
+3. Preserve existing aliases and do not rename files without adding redirects/aliases
+4. Update the source page's "Related" section
 
 ### 6. Update Manifest
 
@@ -96,6 +107,9 @@ After creating/updating pages:
 
 - **One concept per page** — Don't create mega-pages
 - **Wikilinks over plain text** — Always link to existing pages
-- **Source attribution** — Every claim traces to `source:` in frontmatter
+- **Stable identity** — Page `id` never changes, even if title or filename changes
+- **Aliases** — Add common names/synonyms to `aliases` before creating a near-duplicate page
+- **Source attribution** — Every substantive claim traces to `sources` in frontmatter or an inline/section source note
+- **Confidence** — Use `confidence: low` when importing weak, inferred, or agent-synthesized claims
 - **No duplication** — If it exists, merge rather than create new
 - **Markdown only** — No HTML, no embedded media (link externally)

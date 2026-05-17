@@ -14,7 +14,8 @@ Skills are markdown-based instructions that agents load and follow for specific 
 | [issue-to-wiki](issue-to-wiki/SKILL.md) | Closed issue → decision record | Issue closed |
 | [wiki-to-issue](wiki-to-issue/SKILL.md) | Wiki gap → actionable issue | On wiki analysis |
 | [morning-brief](morning-brief/SKILL.md) | Generate daily summary | Daily scheduled |
-| **[ksw](/SKILL.md)** | **Installable agent skill — /init bootstraps full KSW** | **`/ksw init` or install via skillshare** |
+| [init-smoke-test](init-smoke-test/SKILL.md) | Verify config, hooks, and platform commands | After `/init` |
+| **[ksw](/SKILL.md)** | **Installable agent skill — /init bootstraps hub or satellite** | **`/init` → choose hub/satellite** |
 
 ## Skill Format
 
@@ -30,7 +31,7 @@ skills/<name>/
 1. Identify which skill matches your current task
 2. Read the SKILL.md in full before executing
 3. Follow the steps exactly (they handle edge cases)
-4. Skills reference scripts in `.system/scripts/` — run those as instructed
+4. Prefer documented platform commands; if a referenced script is missing, treat it as a documentation bug and use the explicit workflow steps instead
 
 ## Creating New Skills
 

@@ -1,0 +1,28 @@
+#!/bin/bash
+# [KSW-HUB-HOOK] Transition issue state on branch merge
+KSW_YAML="ksw.yaml"
+[ -f "$KSW_YAML" ] || exit 0
+
+command -v yq >/dev/null 2>&1 || { echo "KSW: yq not found; skipping post-merge hook"; exit 0; }
+
+PLATFORM=$(yq -r '.instance.platform' "$KSW_YAML")
+# Detect merged branch from merge commit message
+MERGED_BRANCH=$(git log -1 --format=%s | sed -nE 's/.*ksw\/([0-9]+).*/\1/p' | head -1)
+
+if [ "$PLATFORM" = "gitlab" ]; then
+  command -v glab >/dev/null 2>&1 || { echo "KSW: glab not found; skipping post-merge hook"; exit 0; }
+elif [ "$PLATFORM" = "github" ]; then
+  command -v gh >/dev/null 2>&1 || { echo "KSW: gh not found; skipping post-merge hook"; exit 0; }
+else
+  exit 0
+fi
+
+if [ -n "$MERGED_BRANCH" ]; then
+  if [ "$PLATFORM" = "gitlab" ]; then
+    glab issue update "$MERGED_BRANCH" --unlabel "state:wip" --label "state:review" || echo "KSW: failed to update issue #$MERGED_BRANCH"
+    glab issue note "$MERGED_BRANCH" --message "Branch merged. Ready for review." || echo "KSW: failed to comment on issue #$MERGED_BRANCH"
+  elif [ "$PLATFORM" = "github" ]; then
+    gh issue edit "$MERGED_BRANCH" --remove-label "state:wip" --add-label "state:review" || echo "KSW: failed to update issue #$MERGED_BRANCH"
+    gh issue comment "$MERGED_BRANCH" --body "Branch merged. Ready for review." || echo "KSW: failed to comment on issue #$MERGED_BRANCH"
+  fi
+fi
