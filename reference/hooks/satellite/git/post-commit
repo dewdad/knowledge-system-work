@@ -7,6 +7,7 @@ command -v yq >/dev/null 2>&1 || { echo "KSW: yq not found; skipping progress ho
 
 HUB=$(yq -r '.hub.project_path' "$KSW_LINK")
 PLATFORM=$(yq -r '.hub.platform' "$KSW_LINK")
+DEFAULT_BRANCH=$(yq -r '.hub.default_branch // "main"' "$KSW_LINK")
 INTERVAL=$(yq -r '.preferences.progress_interval // 5' "$KSW_LINK")
 MSG=$(git log -1 --format=%s)
 BRANCH=$(git branch --show-current)
@@ -30,12 +31,13 @@ if [[ "$MSG" =~ KSW[[:space:]]*#([0-9]+) ]]; then
   fi
 fi
 
-# Strategy 2: Branch name matches issue/<ID>-* pattern
-if [[ "$BRANCH" =~ ^issue/([0-9]+)- ]]; then
-  ID="${BASH_REMATCH[1]}"
-  COMMIT_COUNT=$(git rev-list --count main.."$BRANCH" 2>/dev/null || echo "0")
+# Strategy 2: Branch name matches ksw/<ID>-* (preferred) or legacy issue/<ID>-* pattern.
+# `issue/` is accepted during the 0.6.x grace period and will be removed in a later minor.
+if [[ "$BRANCH" =~ ^(ksw|issue)/([0-9]+)- ]]; then
+  ID="${BASH_REMATCH[2]}"
+  COMMIT_COUNT=$(git rev-list --count "${DEFAULT_BRANCH}..${BRANCH}" 2>/dev/null || echo "0")
   if (( COMMIT_COUNT % INTERVAL == 0 )) && (( COMMIT_COUNT > 0 )); then
-    SUMMARY=$(git log --oneline main.."$BRANCH" | tail -5)
+    SUMMARY=$(git log --oneline "${DEFAULT_BRANCH}..${BRANCH}" | tail -5)
     if [ "$PLATFORM" = "gitlab" ]; then
       glab issue note "$ID" -R "$HUB" --message "Batch progress from \`${WORKSPACE}\` (${COMMIT_COUNT} commits):\n\`\`\`\n${SUMMARY}\n\`\`\`" || echo "KSW: failed to post batch progress to issue #$ID"
     else

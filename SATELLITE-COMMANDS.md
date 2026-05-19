@@ -46,11 +46,11 @@ Claim a `state:ready` issue, transition it to `state:wip`, and create a local wo
    gh issue edit <ID> -R <hub> --add-assignee "@me" --remove-label "state:ready" --add-label "state:wip"
    ```
 3. **Re-read** the issue. If assignment or label did not stick, release immediately and stop (see [COORDINATION.md](COORDINATION.md#team-mode-rules)).
-4. **Create local branch** using the satellite branch convention:
+4. **Create local branch** using the unified KSW branch convention:
    ```bash
-   git checkout -b issue/<ID>-<slug>
+   git checkout -b ksw/<ID>-<slug>
    ```
-   `<slug>` is derived from the issue title: lowercase, alphanumeric + hyphens, ≤40 chars. The satellite git hooks (`post-commit`, `post-merge`, `prepare-commit-msg`) recognize this prefix; do not use a different one or progress reporting will silently stop.
+   `<slug>` is derived from the issue title: lowercase, alphanumeric + hyphens, ≤40 chars. The satellite git hooks (`post-commit`, `post-merge`, `prepare-commit-msg`) recognize this prefix; do not use a different one or progress reporting will silently stop. The legacy `issue/<ID>-*` prefix is still accepted during the 0.6.x grace period — see [COORDINATION.md § Branch Convention](COORDINATION.md#branch-convention).
 5. **Update `.ksw-link.yaml`**:
    ```bash
    yq -i '.active_claims += [<ID>]' .ksw-link.yaml
@@ -74,7 +74,7 @@ Mark a claimed issue complete (transition to `state:review` for hub follow-up).
    yq -i 'del(.active_claims[] | select(. == <ID>))' .ksw-link.yaml
    ```
 
-The satellite `post-merge` git hook performs the same transition automatically when an `issue/<ID>-*` branch is merged into the hub's `default_branch`. `/sat done` is the manual path for non-MR workflows.
+The satellite `post-merge` git hook performs the same transition automatically when a `ksw/<ID>-*` branch (or legacy `issue/<ID>-*`) is merged into the hub's `default_branch`. `/sat done` is the manual path for non-MR workflows.
 
 ## /sat blocked `<ID> <reason>`
 
@@ -138,7 +138,7 @@ glab issue note <ID> -R <hub> --message "[<name>] <note>"
 gh issue comment <ID> -R <hub> --body "[<name>] <note>"
 ```
 
-The satellite `post-commit` git hook adds batched progress notes automatically every `preferences.progress_interval` commits on `issue/<ID>-*` branches. `/sat log` is for explicit, off-branch updates.
+The satellite `post-commit` git hook adds batched progress notes automatically every `preferences.progress_interval` commits on `ksw/<ID>-*` branches (legacy `issue/<ID>-*` still recognized). `/sat log` is for explicit, off-branch updates.
 
 ## /sat contribute `<path>`
 
@@ -209,6 +209,55 @@ gh api "repos/<hub>/contents/wiki/_meta/briefs/${LATEST}" --jq '.content' | base
 ```
 
 If no brief exists yet, surface the message `No brief yet on hub. Run /brief on the hub first.` rather than failing silently.
+
+## /sat uninstall
+
+Tear down the satellite bridge in this workspace. Destructive of local KSW config — confirm with the user first.
+
+1. **Confirm**: prompt `This will remove .ksw-link.yaml, KSW sections from AGENTS.md/CLAUDE.md, the agent hook, and KSW-bracketed git hook sections. Proceed? [y/N]`. Abort on anything other than `y`/`Y`/`yes`.
+2. **Capture identity** before deleting config (needed for the hub notification in step 6):
+   ```bash
+   HUB=$(yq -r '.hub.project_path' .ksw-link.yaml)
+   PLATFORM=$(yq -r '.hub.platform' .ksw-link.yaml)
+   NAME=$(yq -r '.identity.workspace_name' .ksw-link.yaml)
+   ```
+3. **Remove `.ksw-link.yaml`**:
+   ```bash
+   rm -f .ksw-link.yaml
+   ```
+4. **Strip KSW sections from AGENTS.md and CLAUDE.md** (if present):
+   - In `AGENTS.md`: delete the `## KSW Satellite — Automatic Knowledge Bridge` section and everything below it up to the next `^## ` heading or EOF.
+   - In `CLAUDE.md`: delete the `## KSW Satellite Session Hooks` section using the same rule.
+   - If the file has nothing else after the deletion, leave it empty rather than removing it (the user may have other tooling expecting it).
+5. **Remove the OpenCode hook** (if installed):
+   ```bash
+   rm -f .opencode/hooks/ksw-satellite.yaml
+   ```
+6. **Strip KSW-bracketed sections from `.git/hooks/*`** — for `post-commit`, `post-merge`, `prepare-commit-msg`, delete the block between `# [KSW-SAT-HOOK-START]` and `# [KSW-SAT-HOOK-END]` (markers written by `/init` Step 7). If the resulting file is empty (or contains only the shebang), remove the file entirely. Use a one-shot `sed` per hook:
+   ```bash
+   for h in post-commit post-merge prepare-commit-msg; do
+     [ -f ".git/hooks/$h" ] || continue
+     sed -i.bak '/# \[KSW-SAT-HOOK-START\]/,/# \[KSW-SAT-HOOK-END\]/d' ".git/hooks/$h"
+     rm -f ".git/hooks/$h.bak"
+   done
+   ```
+7. **Notify the hub** (informational; failure does not block uninstall):
+   ```bash
+   # GitLab
+   glab issue create -R "$HUB" --title "Satellite ${NAME} uninstalled" \
+     --label "type:maintenance,satellite:${NAME}" --description "Local config removed at $(date -u +%Y-%m-%dT%H:%M:%SZ)."
+   # GitHub
+   gh issue create -R "$HUB" --title "Satellite ${NAME} uninstalled" \
+     --label "type:maintenance,satellite:${NAME}" --body "Local config removed at $(date -u +%Y-%m-%dT%H:%M:%SZ)."
+   ```
+8. **Print a manual-deregister hint**:
+   ```
+   Local config removed.
+   To deregister this satellite from the hub, edit ksw.yaml#satellites[] manually
+   on the hub and remove the entry named "<workspace_name>".
+   ```
+
+`/sat uninstall` does not delete branches, commits, or any work artifacts — only the bridge config and hooks.
 
 ---
 

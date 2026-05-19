@@ -1,211 +1,119 @@
-# Agent Coordination Protocol
+# Agent Coordination Protocol — Operational Guide
 
-> **Purpose**: Prevent duplicate work, enable safe parallelism, recover from crashes.  
-> **Interface**: GitLab issues + labels + assignments via `glab` CLI.  
-> **Prerequisite**: `glab auth login` completed on the machine.
+> **Authoritative source.** The state machine is normatively defined in [`states.yaml`](states.yaml); the label catalogue is normatively defined in [`labels.yaml`](labels.yaml). When this document disagrees with either YAML, the YAML wins — fix this document.
+>
+> This file is the operational guide: how an agent _uses_ the state machine in practice.
+>
+> **Platform-agnostic.** All shell commands referenced here must be resolved against [`PLATFORM-OPS.md`](../../PLATFORM-OPS.md). KSW supports `gitlab` (`glab`), `github` (`gh`), and `local` (filesystem queue, hub-only). This document never embeds platform-specific shell forms — only action names that map to rows in the platform table.
+>
+> **Prerequisite.** The platform CLI is authenticated (or, for `local`, the workspace is a hub with a populated `.ksw/queue/` tree).
 
 ---
 
 ## 1. Issue State Machine
 
-Every unit of work is a GitLab issue. Issues move through states via labels:
+Every unit of work is a tracked item — a platform issue (`gitlab` / `github`) or a local queue file (`local`). Items move through states via labels (or directory location, for `local`):
 
 ```
-state:inbox → state:ready → state:wip → state:review → (closed)
-                                ↓
-                         state:blocked (optional)
+state:inbox → state:ready → state:wip → state:review → (closed/done)
+                              ↓
+                       state:blocked (optional)
 ```
 
-| State | Label | Meaning | Who Moves It |
-|-------|-------|---------|--------------|
-| Inbox | `state:inbox` | New, untriaged | Auto-applied on create |
-| Ready | `state:ready` | Triaged, available for pickup | Triage agent or human |
-| WIP | `state:wip` | Claimed, actively being worked | Claiming agent |
-| Review | `state:review` | MR open, awaiting merge | Working agent (on completion) |
-| Blocked | `state:blocked` | Waiting on external dependency | Any agent |
-| Done | _(closed)_ | Issue resolved and closed | Agent or human |
+Canonical mapping:
+
+| State | Label | Local-mode location | Meaning | Who Moves It |
+|-------|-------|---------------------|---------|--------------|
+| Inbox | `state:inbox` | `.ksw/queue/inbox/` | New, untriaged | Source pull / `/sat new` / manual create |
+| Ready | `state:ready` | `.ksw/queue/ready/` | Triaged, available | Triage workflow or human |
+| WIP | `state:wip` | `.ksw/queue/wip/` | Claimed, in progress | Claiming agent |
+| Review | `state:review` | `.ksw/queue/done/` (with reviewer note) | MR/PR open or completion review pending | Working agent on completion |
+| Blocked | `state:blocked` | `.ksw/queue/blocked/` | Awaiting input | Any agent |
+| Done | _(closure)_ | `.ksw/queue/done/` (closed) | Resolved | Agent or human |
+
+Closure is platform-native (close issue / close PR / move file with closed timestamp). KSW does not define a `state:done` label.
 
 ---
 
 ## 2. Claiming Work (Lock Acquisition)
 
-### Pre-Claim Check
+### 2.1 Pre-claim check
 
-```bash
-# List available work (unclaimed, ready)
-glab issue list --label "state:ready" --assignee ""
+1. **List available work**: `<list-ready>` action against [PLATFORM-OPS.md](../../PLATFORM-OPS.md). Filter to unassigned items.
+2. **Re-fetch the specific issue** before claiming. Inspect `assignees` count and `labels`. If the issue already has an assignee or `state:wip`, abort — another agent is on it.
 
-# Verify specific issue is still unclaimed
-ISSUE_JSON=$(glab issue view <ID> --output json)
-ASSIGNEES=$(echo "$ISSUE_JSON" | jq -r '.assignees | length')
-STATE_WIP=$(echo "$ISSUE_JSON" | jq -r '.labels[] | select(. == "state:wip")')
+### 2.2 Claim sequence (verify-after-write)
 
-if [ "$ASSIGNEES" -gt 0 ] || [ -n "$STATE_WIP" ]; then
-  echo "SKIP: Issue already claimed"
-  exit 0
-fi
-```
+1. **Apply** the `claim` action: assign to self **and** swap `state:ready` → `state:wip`. Where the platform supports both in one call, use it; where it does not, sequence them and tolerate transient inconsistency between the two writes.
+2. **Create a working branch** named `ksw/<ID>-<slug>` (slug: lowercase, alphanumeric + hyphens, ≤40 chars). Legacy `issue/<ID>-<slug>` is still recognised by hooks during the 0.6.x grace period — see [COORDINATION.md § Branch Convention](../../COORDINATION.md#branch-convention).
+3. **Add a claim comment** for traceability — host + UTC timestamp.
+4. **Re-read the issue** ([PLATFORM-OPS.md § Verification rule](../../PLATFORM-OPS.md#verification-rule)). Confirm: exactly one assignee (you) and `state:wip` is set.
 
-### Claim Sequence (Verify-After-Write)
+### 2.3 Race-condition mitigation
 
-```bash
-# 1. Assign to self + transition to WIP
-glab issue update <ID> \
-  --assignee "@me" \
-  --unlabel "state:ready" \
-  --label "state:wip"
+Platform label/assignment writes are not atomic. Two agents can hit the same `state:ready` issue simultaneously.
 
-# 2. Create working branch
-SLUG=$(echo "<title>" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | head -c 30)
-git checkout -b "issue/<ID>-${SLUG}"
+If the post-claim verification shows multiple assignees, conflicting labels, or a competing claim comment that pre-dates yours:
 
-# 3. Add claim comment (traceability)
-glab issue note <ID> --message "Claimed by agent on $(hostname) at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+1. **Release** immediately — `release` action: unassign + revert label to `state:ready`.
+2. Do **not** create or push branches, do **not** edit files, do **not** record in local active-claim state until verification passes.
+3. If two consecutive claim attempts fail verification, apply `needs:coordination` and walk away. A human or a different agent will resolve.
 
-# 4. Re-read issue and verify this agent owns the claim
-ISSUE_JSON=$(glab issue view <ID> --output json)
-ASSIGNEES=$(echo "$ISSUE_JSON" | jq -r '.assignees[].username')
-HAS_WIP=$(echo "$ISSUE_JSON" | jq -r '.labels[] | select(. == "state:wip")')
-if [ -z "$HAS_WIP" ] || [ "$(echo "$ASSIGNEES" | wc -l)" -ne 1 ]; then
-  echo "CLAIM UNCERTAIN: release and retry later"
-  glab issue update <ID> --unassignee "@me" --unlabel "state:wip" --label "state:ready"
-  exit 1
-fi
-```
-
-### Race Condition Mitigation
-
-GitLab label/assignment updates are NOT atomic. Two agents can claim simultaneously. Treat every remote mutation as provisional until the issue is re-read.
-
-1. **After claiming**, re-read the issue and verify exactly one assignee and `state:wip`
-2. If multiple assignees or conflicting comments exist, release unless your claim comment is earliest
-3. Do not create branches, edit files, or update local active-claim state until verification succeeds
-4. If verification fails twice, add `needs:coordination` and leave the issue in `state:ready`
-
-```bash
-# Post-claim verification (paranoia check)
-sleep 2  # Brief delay for GitLab propagation
-ASSIGNEE_COUNT=$(glab issue view <ID> --output json | jq '.assignees | length')
-if [ "$ASSIGNEE_COUNT" -ne 1 ]; then
-  echo "RACE LOST: Releasing claim"
-  glab issue update <ID> --unassignee "@me" --unlabel "state:wip" --label "state:ready"
-  exit 0
-fi
-```
+For `local` mode, races cannot occur (single-process queue), so this section degrades to a no-op.
 
 ---
 
 ## 3. Releasing Work (Lock Release)
 
-### On Successful Completion
+### 3.1 Successful completion
 
-```bash
-# 1. Push branch
-git push origin "issue/<ID>-${SLUG}"
+1. **Push** the working branch to the platform remote (skip for `local`).
+2. **Open an MR/PR** referencing the issue (skip for `local`; instead move the queue file to `.ksw/queue/done/`).
+3. **Transition** `state:wip` → `state:review` via the `complete` action.
+4. **Comment** on the issue: "Work complete. MR/PR open."
 
-# 2. Create MR
-glab mr create \
-  --source-branch "issue/<ID>-${SLUG}" \
-  --target-branch main \
-  --title "Resolve #<ID>: <title>" \
-  --description "Closes #<ID>" \
-  --assignee "@me"
+### 3.2 Failure / inability to complete
 
-# 3. Transition state
-glab issue update <ID> \
-  --unlabel "state:wip" \
-  --label "state:review"
+1. **Push partial work** under a `wip:` commit so it is preserved on the remote (skip for `local`; the queue file already holds progress).
+2. **Release** — unassign + swap `state:wip` → `state:ready`.
+3. **Comment** with the reason and the branch name so a successor can resume.
 
-# 4. Completion note
-glab issue note <ID> --message "Work complete. MR created. Awaiting merge."
-```
-
-### On Failure / Inability to Complete
-
-```bash
-# 1. Push partial work (preserve progress)
-git add . && git commit -m "wip: partial progress on #<ID>" && git push origin "issue/<ID>-${SLUG}"
-
-# 2. Release lock but DON'T close
-glab issue update <ID> \
-  --unlabel "state:wip" \
-  --label "state:ready" \
-  --unassignee "@me"
-
-# 3. Document what was attempted
-glab issue note <ID> --message "Released: <reason>. Partial work on branch issue/<ID>-${SLUG}."
-```
+The branch is **never deleted** during a release. Partial work is durable.
 
 ---
 
-## 4. Stale Lock Recovery
+## 4. Stale-Lock Recovery
 
-An agent may crash or disconnect without releasing its lock. Other agents detect this:
+A WIP item is **stale** when ALL of:
 
-### Detection Criteria
+- It is labelled `state:wip` (or sits in `.ksw/queue/wip/`).
+- It has an assignee.
+- The maximum of `updated_at`, last-comment-at, and last-commit-on-branch-at is older than `coordination.stale_wip_timeout_minutes` (from `ksw.yaml`; default 240).
 
-A lock is **stale** when ALL of:
-- Issue has `state:wip` label
-- Issue has an assignee
-- Last activity on the issue (comment or label change) > `stale_wip_timeout_minutes` (default: 30)
-- The working branch has no commits in the last `stale_wip_timeout_minutes`
+Detection and recovery are performed by the hub via `/reap` (see [HUB-COMMANDS.md § /reap](../../HUB-COMMANDS.md#reap)). Satellites do **not** auto-release their own claims.
 
-### Recovery Procedure
+The recovery action is: unassign, swap `state:wip` → `state:ready`, post a comment naming the timeout and preserved branch. Branches are **never deleted** during recovery — partial work belongs to whichever agent picks the issue up next.
 
-```bash
-# 1. Check for stale locks
-STALE_CUTOFF=$(date -u -d "30 minutes ago" +%Y-%m-%dT%H:%M:%SZ)
-# glab doesn't natively filter by last_activity, so:
-glab issue list --label "state:wip" --output json | \
-  jq --arg cutoff "$STALE_CUTOFF" '.[] | select(.updated_at < $cutoff)'
-
-# 2. For each stale issue: reclaim
-glab issue update <ID> \
-  --unassignee "<previous_assignee>" \
-  --assignee "@me" \
-  --label "state:wip"
-
-glab issue note <ID> --message "Reclaimed stale lock (previous agent inactive >30min). Continuing work."
-
-# 3. Check for existing branch and continue from there
-git fetch origin
-if git branch -r | grep "issue/<ID>"; then
-  git checkout "issue/<ID>-*"  # Continue from partial work
-else
-  git checkout -b "issue/<ID>-${SLUG}"  # Fresh start
-fi
-```
+Detailed recovery procedure including manual fallbacks lives in [`recovery.md`](recovery.md).
 
 ---
 
 ## 5. Domain-Based Parallelism
 
-### Safe Parallel Work (No Coordination Needed)
+### 5.1 Safe parallel work — no coordination needed
 
-Two agents working on **different domains** can proceed without checking each other:
+Two agents working on **different domains** can proceed without checking each other. File scopes do not overlap by definition: `domains/<a>/*` and `wiki/projects/<a>/*` vs `domains/<b>/*` and `wiki/projects/<b>/*`.
 
-```bash
-# Agent A: domain:health → touches domains/health/*, wiki/projects/health/*
-# Agent B: domain:finance → touches domains/finance/*, wiki/projects/finance/*
-# → No file overlap. Safe.
-```
+### 5.2 Same-domain parallel work — requires scoping
 
-### Same-Domain Parallel Work (Requires Scoping)
+If two issues share a domain, agents MUST verify file-level non-overlap before working in parallel:
 
-If two issues share a domain, the agent MUST check for file-level overlap:
+- Issues touching disjoint files within the same domain → safe (e.g. `domains/health/sources.yaml` vs `wiki/projects/health/sleep.md`).
+- Issues touching shared files or sweeping the whole domain → serialize. The wider-scoped issue blocks the narrower ones.
 
-```bash
-# Issue #10: "Update health sources" → touches domains/health/sources.yaml
-# Issue #11: "Write health wiki page" → touches wiki/projects/health/sleep.md
-# → Different files within same domain. Safe IF issue descriptions are specific.
+### 5.3 Scope declaration
 
-# Issue #12: "Reorganize health domain" → touches ALL of domains/health/*
-# → BLOCKS all other health work. Must complete before others start.
-```
-
-### Scope Declaration in Issues
-
-Issues SHOULD declare their file scope in the description:
+Issues SHOULD declare their file scope in the description so other agents can decide quickly whether parallel work is safe:
 
 ```markdown
 ## Scope
@@ -221,63 +129,48 @@ Issues SHOULD declare their file scope in the description:
 
 ## 6. Conflict Resolution
 
-### Prevention (Preferred)
+### 6.1 Prevention (preferred)
 
-1. Issues scoped to non-overlapping files
-2. Domain isolation (different agents, different domains)
-3. Branch-per-issue (conflicts surface at MR time, not during work)
+1. Issues scoped to non-overlapping files (§5.3).
+2. Domain isolation (different agents, different domains).
+3. Branch-per-issue — conflicts surface at MR/PR time, not during work.
 
-### Detection (At MR Time)
+### 6.2 Detection at MR/PR time
 
-```bash
-# GitLab CI will report merge conflicts
-# Agent sees: "This MR has conflicts with main"
+The platform reports merge conflicts. Resolution is a `rebase` against the default branch (read from `coordination.default_branch`, defaulting to `main`), conflict fix, force-push with lease.
 
-# Resolution: rebase on latest main
-git fetch origin main
-git rebase origin/main
-# Fix conflicts
-git push --force-with-lease
-```
+### 6.3 Last resort: manual intervention
 
-### Last Resort: Manual Intervention
+If two MRs/PRs touch the same lines:
 
-If two MRs touch the same lines:
-1. First MR merged wins
-2. Second MR author rebases and reconciles
-3. If reconciliation is non-trivial → create new issue for conflict resolution
+1. First merge wins.
+2. Second author rebases and reconciles.
+3. If reconciliation is non-trivial → open a fresh `type:decision` issue and proceed there.
+
+For `local` mode, conflicts cannot occur (single-process queue) — the section degrades to a no-op.
 
 ---
 
 ## 7. Quick Reference Card
 
+Resolve every action below against [PLATFORM-OPS.md](../../PLATFORM-OPS.md):
+
 ```
 ╔══════════════════════════════════════════════════════════════╗
-║  AGENT COORDINATION — QUICK REFERENCE                       ║
+║  AGENT COORDINATION — QUICK REFERENCE (platform-agnostic)    ║
 ╠══════════════════════════════════════════════════════════════╣
 ║                                                              ║
-║  FIND WORK:                                                  ║
-║    glab issue list --label "state:ready" --assignee ""       ║
-║                                                              ║
-║  CLAIM:                                                      ║
-║    glab issue update <ID> --assignee "@me"                   ║
-║      --unlabel "state:ready" --label "state:wip"             ║
-║    git checkout -b issue/<ID>-<slug>                         ║
-║                                                              ║
-║  COMPLETE:                                                   ║
-║    git push origin issue/<ID>-<slug>                         ║
-║    glab mr create --source-branch "issue/<ID>-<slug>"        ║
-║      --title "Resolve #<ID>: <title>"                        ║
-║    glab issue update <ID> --unlabel "state:wip"              ║
-║      --label "state:review"                                  ║
-║                                                              ║
-║  RELEASE (can't finish):                                     ║
-║    glab issue update <ID> --unassignee "@me"                 ║
-║      --unlabel "state:wip" --label "state:ready"             ║
-║                                                              ║
-║  BLOCK:                                                      ║
-║    glab issue update <ID> --label "state:blocked"            ║
-║      --unlabel "state:wip"                                   ║
+║  FIND WORK:    list-ready, filter to unassigned              ║
+║  CLAIM:        assign-self + state:ready → state:wip,        ║
+║                then re-read to verify                        ║
+║  BRANCH:       git checkout -b ksw/<ID>-<slug>               ║
+║  COMPLETE:     push branch, open MR/PR,                      ║
+║                state:wip → state:review                      ║
+║  RELEASE:      push partial, unassign,                       ║
+║                state:wip → state:ready                       ║
+║  BLOCK:        state:wip → state:blocked,                    ║
+║                comment with reason                           ║
+║  REAP:         hub-only; runs against stale state:wip items  ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
 ```

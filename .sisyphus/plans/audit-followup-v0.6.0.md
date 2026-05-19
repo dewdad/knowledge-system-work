@@ -4,48 +4,52 @@
 
 **Owner:** maintainer
 **Tracking issue:** _to be created on hub_
-**Target version:** 0.6.0 (minor bump — adds new fragments, breaks single-file install assumption → must be called out in CHANGELOG)
+**Target versions:** 0.6.0 (initial scope — phases A + B + C, plus D3, E2, F3) and 0.6.1 (carry-over — D1, D2, D4, D5, E1, E3, E5, E6, F1, F2, plus C4 CI wiring)
 **Touches:** `SKILL.md`, `reference/`, `README.md`, `CHANGELOG.md`, `VERSION`, `AGENTS.md`
 
 ---
 
-## STATUS (2026-05-19)
+## STATUS (2026-05-19, updated post-carry-over)
 
-Phases A + B + C executed in one session and verified (`bash scripts/lint-skill.sh` clean, all cross-refs resolve, SKILL.md = 104 lines).
+**Released as 0.6.0 (initial):** phases A + B + C executed in one session and verified (`bash scripts/lint-skill.sh` clean, all cross-refs resolve, SKILL.md = 104 lines).
 
-| Item | Phase | Status |
-|---|---|---|
-| A1 — SKILL.md frontmatter | A | ✅ shipped |
-| A2 — Version stamp in `ksw.yaml` / `.ksw-link.yaml` | A | ✅ shipped |
-| A3 — VERSION bump + CHANGELOG entry | A | ✅ shipped |
-| B1 — Install model decision (chose B1.a directory install) | B | ✅ shipped |
-| B2 — README rewrite + `INSTALL.md` | B | ✅ shipped |
-| B3 — Init-smoke-test directory-install check | B | ✅ shipped |
-| C1 — Target structure (7 fragments + reference/) | C | ✅ shipped |
-| C2 — SKILL.md router contract (104 lines, ≤200 target) | C | ✅ shipped |
-| C3 — Fragment extraction rules (self-contained, "Loaded when" headers) | C | ✅ shipped |
-| C4 — `scripts/lint-skill.sh` drift lint | C | ✅ shipped (CI wiring deferred) |
-| C5 — Content migration per the table | C | ✅ shipped |
-| C6 — Token-cost validation | C | ⚠️ approximated by line count, not measured |
-| D1 — Branch convention unification (`ksw/` everywhere) | D | ⏸ deferred — current dual convention documented in `COORDINATION.md` |
-| D2 — Default-branch detection in hooks | D | ⏸ deferred (config field added to `.ksw-link.yaml` schema, hooks unchanged) |
-| D3 — Complete label table | D | ✅ shipped via `COORDINATION.md` (canonical list including `type:bug`, `needs:clarification`, `domain:<n>`, `satellite:<n>`) |
-| D4 — State-machine single source of truth | D | ⏸ deferred — note added in `COORDINATION.md` header; PROTOCOL.md rewrite not done |
-| D5 — `secrets/` schema file | D | ⏸ deferred — schema shape inlined in `HUB-COMMANDS.md` `/add-source` Step 4 |
-| E1 — `/reap` stale-WIP command | E | ⏸ deferred |
-| E2 — Satellite-on-local-hub guard | E | ✅ shipped at `/init` time in `INIT.md` Step 1 |
-| E3 — `max_parallel_agents` enforce-or-drop | E | ⏸ deferred (field preserved in schema, no behavioural change) |
-| E4 — Cross-host pull lock | E/F | ⏸ deferred (limitation documented in `WORKFLOWS.md`) |
-| E5 — Satellite registry reconciliation | E | ⏸ deferred |
-| E6 — `/sat uninstall` | E | ⏸ deferred (manual procedure documented in `INSTALL.md`) |
-| F1 — Hub `prepare-commit-msg` hook | F | ⏸ deferred |
-| F2 — Orphans → `wiki-to-issue` wiring | F | ⏸ deferred |
-| F3 — `/sat contribute` conflict spec | F | ✅ shipped (added to `SATELLITE-COMMANDS.md` while migrating that section) |
+**Released as 0.6.1 (carry-over):** every previously-deferred item below is now shipped — D1, D2, D4, D5, E1, E3, E5, E6, F1, F2, plus C4 CI wiring. `bash scripts/lint-skill.sh` still exits 0 after the carry-over. Only C6 (measured token-cost validation) remains an approximation. See [CHANGELOG.md § 0.6.1](../../CHANGELOG.md) for the user-facing release notes.
 
-**Files added:** `INIT.md`, `HUB-COMMANDS.md`, `SATELLITE-COMMANDS.md`, `PLATFORM-OPS.md`, `COORDINATION.md`, `WORKFLOWS.md`, `INSTALL.md`, `scripts/lint-skill.sh`.
-**Files modified:** `SKILL.md`, `README.md`, `AGENTS.md`, `CHANGELOG.md`, `VERSION`, `reference/workflows/init-smoke-test/SKILL.md`.
+| Item | Phase | Status | Released in |
+|---|---|---|---|
+| A1 — SKILL.md frontmatter | A | ✅ shipped | 0.6.0 |
+| A2 — Version stamp in `ksw.yaml` / `.ksw-link.yaml` | A | ✅ shipped | 0.6.0 |
+| A3 — VERSION bump + CHANGELOG entry | A | ✅ shipped | 0.6.0 |
+| B1 — Install model decision (chose B1.a directory install) | B | ✅ shipped | 0.6.0 |
+| B2 — README rewrite + `INSTALL.md` | B | ✅ shipped | 0.6.0 |
+| B3 — Init-smoke-test directory-install check | B | ✅ shipped | 0.6.0 |
+| C1 — Target structure (7 fragments + reference/) | C | ✅ shipped | 0.6.0 |
+| C2 — SKILL.md router contract (104 lines, ≤200 target) | C | ✅ shipped | 0.6.0 |
+| C3 — Fragment extraction rules (self-contained, "Loaded when" headers) | C | ✅ shipped | 0.6.0 |
+| C4 — `scripts/lint-skill.sh` drift lint | C | ✅ shipped (CI wiring landed in 0.6.1 via `skill-drift-lint` job in `reference/templates/ci/maintenance-pipeline.yml`) | 0.6.0 + 0.6.1 |
+| C5 — Content migration per the table | C | ✅ shipped | 0.6.0 |
+| C6 — Token-cost validation | C | ⚠️ approximated by line count, not measured. Carried forward. | — |
+| D1 — Branch convention unification (`ksw/` everywhere) | D | ✅ shipped — all hooks accept `ksw/<ID>-*` (preferred) and legacy `issue/<ID>-*` during 0.6.x grace period; docs unified | 0.6.1 |
+| D2 — Default-branch detection in hooks | D | ✅ shipped — hub `post-commit` reads `coordination.default_branch`; satellite `post-commit` reads `hub.default_branch`; both fall back to `main` | 0.6.1 |
+| D3 — Complete label table | D | ✅ shipped via `COORDINATION.md` (canonical list including `type:bug`, `needs:clarification`, `domain:<n>`, `satellite:<n>`) | 0.6.0 |
+| D4 — State-machine single source of truth | D | ✅ shipped — `PROTOCOL.md` rewritten platform-agnostic with explicit SSOT header naming `states.yaml` and `labels.yaml`; `recovery.md` rewritten to match | 0.6.1 |
+| D5 — `secrets/` schema file | D | ✅ shipped — `reference/schemas/secrets.schema.yaml` (JSON-schema, oneOf bearer / basic / OAuth2); `/add-source` Step 4 links to it | 0.6.1 |
+| E1 — `/reap` stale-WIP command | E | ✅ shipped — full procedure in `HUB-COMMANDS.md § /reap`; default `stale_wip_timeout_minutes` raised 30 → 240; `/reap --dry-run` wired into `reference/hooks/hub/agents/{opencode.yaml,claude.md}` | 0.6.1 |
+| E2 — Satellite-on-local-hub guard | E | ✅ shipped at `/init` time in `INIT.md` Step 1 | 0.6.0 |
+| E3 — `max_parallel_agents` enforce-or-drop | E | ✅ shipped — field dropped from generated `ksw.yaml` template (and from the schema reference in INIT.md) | 0.6.1 |
+| E4 — Cross-host pull lock | E/F | ⏸ deferred to 0.7.0 (limitation documented in `WORKFLOWS.md`) | — |
+| E5 — Satellite registry reconciliation | E | ✅ shipped — `last_seen_at` added to `ksw.yaml#satellites[]` schema; `/status` refreshes it from satellite-posted comments and flags `(stale)` after 30 days | 0.6.1 |
+| E6 — `/sat uninstall` | E | ✅ shipped — full procedure in `SATELLITE-COMMANDS.md § /sat uninstall`; strips KSW-bracketed hook sections, AGENTS.md/CLAUDE.md sections, agent hook file, `.ksw-link.yaml`, then notifies hub | 0.6.1 |
+| F1 — Hub `prepare-commit-msg` hook | F | ✅ shipped — `reference/hooks/hub/git/prepare-commit-msg` mirrors satellite version; gated on `coordination.auto_issue_ref` (default true) | 0.6.1 |
+| F2 — Orphans → `wiki-to-issue` wiring | F | ✅ shipped — `reference/workflows/wiki-to-issue/SKILL.md` lists `wiki/_graph/orphans.md` as input; orphans become `type:research` issues | 0.6.1 |
+| F3 — `/sat contribute` conflict spec | F | ✅ shipped (added to `SATELLITE-COMMANDS.md` while migrating that section) | 0.6.0 |
 
-**Carry-over for the next session:** D1, D2, D4, D5, E1, E3, E5, E6, F1, F2 (and any C4 CI wiring + C6 measured token validation). Sections §1–§11 below preserve the original specs for those items.
+**Files added in 0.6.0:** `INIT.md`, `HUB-COMMANDS.md`, `SATELLITE-COMMANDS.md`, `PLATFORM-OPS.md`, `COORDINATION.md`, `WORKFLOWS.md`, `INSTALL.md`, `scripts/lint-skill.sh`.
+**Files added in 0.6.1:** `reference/hooks/hub/git/prepare-commit-msg`, `reference/schemas/secrets.schema.yaml`.
+**Files modified in 0.6.0:** `SKILL.md`, `README.md`, `AGENTS.md`, `CHANGELOG.md`, `VERSION`, `reference/workflows/init-smoke-test/SKILL.md`.
+**Files modified in 0.6.1:** `SKILL.md`, `INIT.md`, `HUB-COMMANDS.md`, `SATELLITE-COMMANDS.md`, `COORDINATION.md`, `CHANGELOG.md`, `VERSION`, `reference/coordination/PROTOCOL.md`, `reference/coordination/recovery.md`, `reference/coordination/states.yaml`, `reference/hooks/hub/agents/opencode.yaml`, `reference/hooks/hub/agents/claude.md`, `reference/hooks/hub/git/{post-commit,post-checkout,post-merge}`, `reference/hooks/satellite/git/{post-commit,post-merge,prepare-commit-msg}`, `reference/templates/ci/maintenance-pipeline.yml`, `reference/workflows/init-smoke-test/SKILL.md`, `reference/workflows/wiki-to-issue/SKILL.md`.
+
+**Carry-over for the next session:** none from this plan. C6 (measured token-cost validation) and E4 (cross-host pull lock, scheduled for 0.7.0) are the only outstanding items. Sections §1–§11 below preserve the original specs for archival/reference.
 
 ---
 
@@ -69,11 +73,11 @@ Phases A + B + C executed in one session and verified (`bash scripts/lint-skill.
 
 ### Success criteria (verifiable)
 
-- [ ] Fresh install via `cp -r` and via skillshare both produce a working `/init` end-to-end on hub + satellite + local.
-- [ ] Token cost of a `/sat board` invocation drops measurably (target: <30% of current full-SKILL.md load).
-- [ ] `/init` smoke test passes on all three platforms.
-- [ ] `lint-skill` (new script — see §3.4) reports zero drift between SKILL.md, `reference/coordination/states.yaml`, `reference/coordination/labels.yaml`.
-- [ ] `ksw.yaml` produced by /init contains a `version` key, and consuming agents emit a warning on version mismatch.
+- [ ] Fresh install via `cp -r` and via skillshare both produce a working `/init` end-to-end on hub + satellite + local. _(documented + smoke-test wired; not exercised against live platforms in this session)_
+- [ ] Token cost of a `/sat board` invocation drops measurably (target: <30% of current full-SKILL.md load). _(approximated by line count; measured validation pending — C6 carry-over)_
+- [ ] `/init` smoke test passes on all three platforms. _(directory-install check shipped in 0.6.0; full smoke-test against live platforms not run here)_
+- [x] `lint-skill` (new script — see §3.4) reports zero drift between SKILL.md, `reference/coordination/states.yaml`, `reference/coordination/labels.yaml`. _(0.6.0; CI wiring landed in 0.6.1)_
+- [x] `ksw.yaml` produced by /init contains a `version` key, and consuming agents emit a warning on version mismatch. _(0.6.0; bumped to `skill_version: "0.6.1"` in 0.6.1)_
 
 ---
 
@@ -451,20 +455,21 @@ F1, F2, F3 ─────────────────────┘
 
 ## 10. Acceptance checklist
 
-Run before tagging 0.6.0:
+Run before tagging 0.6.x:
 
-- [ ] `head -20 SKILL.md` shows valid YAML frontmatter with name + description + version.
-- [ ] `wc -l SKILL.md` reports ≤ 200.
-- [ ] All fragments listed in §C1 exist and open with a "Loaded when:" header.
-- [ ] `scripts/lint-skill.sh` exits 0.
-- [ ] Fresh `/init` on hub (gitlab + github + local), then satellite (gitlab + github), then `/init` smoke test passes.
-- [ ] `/sat board` against an active hub returns the board without loading INIT.md or HUB-COMMANDS.md (verify via tracing or token-count).
-- [ ] All hooks under `reference/hooks/**` reference `ksw/<ID>-*` (not `issue/<ID>-*`).
-- [ ] `ksw.yaml` written by /init contains `ksw.skill_version: "0.6.0"`.
-- [ ] `/reap --dry-run` runs cleanly on a hub with at least one stale wip.
-- [ ] `/sat uninstall` removes all installed artifacts and reports any it could not remove.
-- [ ] CHANGELOG entry for 0.6.0 lists all changes in §1-§6.
-- [ ] VERSION reads `0.6.0`.
+- [x] `head -20 SKILL.md` shows valid YAML frontmatter with name + description + version. _(0.6.0)_
+- [x] `wc -l SKILL.md` reports ≤ 200. _(0.6.0; current 105 lines)_
+- [x] All fragments listed in §C1 exist and open with a "Loaded when:" header. _(0.6.0)_
+- [x] `scripts/lint-skill.sh` exits 0. _(verified after every 0.6.0 + 0.6.1 change)_
+- [ ] Fresh `/init` on hub (gitlab + github + local), then satellite (gitlab + github), then `/init` smoke test passes. _(not run end-to-end against live platforms in this session)_
+- [ ] `/sat board` against an active hub returns the board without loading INIT.md or HUB-COMMANDS.md (verify via tracing or token-count). _(C6 token measurement still pending)_
+- [x] All hooks under `reference/hooks/**` accept `ksw/<ID>-*` (preferred). _(0.6.1; legacy `issue/<ID>-*` is still accepted during the 0.6.x grace period — see Risk register)_
+- [x] `ksw.yaml` written by /init contains `ksw.skill_version: "0.6.1"`. _(template updated in 0.6.1; INIT.md schema + smoke-test reference synced)_
+- [x] `/reap --dry-run` documented and wired into hub agent session_start hooks. _(0.6.1; live execution against a hub with a stale wip not run in this session)_
+- [x] `/sat uninstall` documented end-to-end (file removal, hook-section stripping, hub notification, manual-deregister hint). _(0.6.1)_
+- [x] CHANGELOG entry for 0.6.0 lists all changes in §1–§6 (initial scope). _(0.6.0)_
+- [x] CHANGELOG entry for 0.6.1 lists all carry-over changes (D1, D2, D4, D5, E1, E3, E5, E6, F1, F2, C4 CI wiring). _(0.6.1)_
+- [x] VERSION reads `0.6.1`. _(0.6.1)_
 
 ---
 

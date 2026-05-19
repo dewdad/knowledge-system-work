@@ -1,11 +1,11 @@
 #!/bin/bash
-# [KSW-SAT-HOOK] Auto-append KSW issue reference on issue branches
-KSW_LINK=".ksw-link.yaml"
-[ -f "$KSW_LINK" ] || exit 0
+# [KSW-HUB-HOOK] Auto-append KSW issue reference on hub issue branches
+KSW_YAML="ksw.yaml"
+[ -f "$KSW_YAML" ] || exit 0
 
 command -v yq >/dev/null 2>&1 || exit 0
 
-AUTO_REF=$(yq -r '.preferences.auto_issue_ref // true' "$KSW_LINK")
+AUTO_REF=$(yq -r '.coordination.auto_issue_ref // true' "$KSW_YAML")
 [ "$AUTO_REF" = "true" ] || exit 0
 
 BRANCH=$(git branch --show-current)

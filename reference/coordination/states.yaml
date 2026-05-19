@@ -33,12 +33,12 @@ states:
       - blocked    # Discovered dependency during work
     entry_actions:
       - "Assign to claiming agent"
-      - "Create working branch: issue/<ID>-<slug>"
+      - "Create working branch: ksw/<ID>-<slug> (legacy issue/<ID>-<slug> accepted during 0.6.x grace period)"
       - "Add claim comment with hostname + timestamp"
     exit_actions: []
     timeout:
-      minutes: 30
-      recovery: "Eligible for reclaim by another agent"
+      minutes: 240
+      recovery: "Eligible for reclaim by another agent (run /reap on hub)"
 
   review:
     label: "state:review"

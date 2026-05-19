@@ -7,10 +7,12 @@ command -v yq >/dev/null 2>&1 || { echo "KSW: yq not found; skipping progress ho
 
 BRANCH=$(git branch --show-current)
 MSG=$(git log -1 --format=%s)
+DEFAULT_BRANCH=$(yq -r '.coordination.default_branch // "main"' "$KSW_YAML")
 
-# Branch name matches ksw/<ID>-* pattern
-if [[ "$BRANCH" =~ ^ksw/([0-9]+)- ]]; then
-  ID="${BASH_REMATCH[1]}"
+# Branch name matches ksw/<ID>-* (preferred) or legacy issue/<ID>-* pattern.
+# `issue/` is accepted during the 0.6.x grace period and will be removed in a later minor.
+if [[ "$BRANCH" =~ ^(ksw|issue)/([0-9]+)- ]]; then
+  ID="${BASH_REMATCH[2]}"
   PLATFORM=$(yq -r '.instance.platform' "$KSW_YAML")
   if [ "$PLATFORM" = "gitlab" ]; then
     command -v glab >/dev/null 2>&1 || { echo "KSW: glab not found; skipping progress hook"; exit 0; }
@@ -19,10 +21,10 @@ if [[ "$BRANCH" =~ ^ksw/([0-9]+)- ]]; then
   else
     exit 0
   fi
-  COMMIT_COUNT=$(git rev-list --count main.."$BRANCH" 2>/dev/null || echo "0")
+  COMMIT_COUNT=$(git rev-list --count "${DEFAULT_BRANCH}..${BRANCH}" 2>/dev/null || echo "0")
   # Comment every 5th commit (batch progress, not noisy)
   if (( COMMIT_COUNT % 5 == 0 )) && (( COMMIT_COUNT > 0 )); then
-    SUMMARY=$(git log --oneline main.."$BRANCH" | tail -5)
+    SUMMARY=$(git log --oneline "${DEFAULT_BRANCH}..${BRANCH}" | tail -5)
     if [ "$PLATFORM" = "gitlab" ]; then
       glab issue note "$ID" --message "Progress (${COMMIT_COUNT} commits):\n\`\`\`\n${SUMMARY}\n\`\`\`" || echo "KSW: failed to post progress to issue #$ID"
     elif [ "$PLATFORM" = "github" ]; then

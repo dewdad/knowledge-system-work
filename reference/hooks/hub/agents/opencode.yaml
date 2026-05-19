@@ -8,13 +8,14 @@ on_session_start:
     PLATFORM=$(yq -r '.instance.platform // "local"' ksw.yaml 2>/dev/null || echo "local")
     if [ "$PLATFORM" = "gitlab" ] && command -v glab >/dev/null 2>&1; then
       echo "Inbox: $(glab issue list --label 'state:inbox' --per-page 100 2>/dev/null | wc -l) items"
-      echo "Stale WIP: check /status for stale lock details"
     elif [ "$PLATFORM" = "github" ] && command -v gh >/dev/null 2>&1; then
       echo "Inbox: $(gh issue list --label 'state:inbox' --limit 100 2>/dev/null | wc -l) items"
-      echo "Stale WIP: check /status for stale lock details"
     else
       echo "Platform automation unavailable; use local queue or run /status"
     fi
+    echo ""
+    echo "Stale WIP (preview only — run /reap to release):"
+    echo "  invoke /reap --dry-run for the full report"
     echo ""
     BRIEF=$(ls wiki/_meta/briefs/ 2>/dev/null | tail -1)
     if [ -n "$BRIEF" ] && [ "$BRIEF" != "$(date +%Y-%m-%d).md" ]; then

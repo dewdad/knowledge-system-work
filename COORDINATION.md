@@ -34,7 +34,7 @@ Set in `ksw.yaml#coordination.mode`. Hub only — satellites inherit team semant
 ### Team Mode
 
 1. Never push directly to `default_branch`. Always branch + MR/PR.
-2. One issue → one branch, named `ksw/<ID>-<slug>` (lowercase, hyphenated, ≤40 chars).
+2. One issue → one branch, named `ksw/<ID>-<slug>` (lowercase, hyphenated, ≤40 chars; see [Branch Convention](#branch-convention)).
 3. Claim before working: assign-to-self **and** transition `state:ready` → `state:wip` in a single call where the platform supports it.
 4. After claiming, **re-read** the issue (see [PLATFORM-OPS.md](PLATFORM-OPS.md#verification-rule)). If assignment or label did not stick, release immediately and stop.
 5. Release if stuck: unassign + label `state:ready`. Branch is preserved on the remote.
@@ -52,18 +52,21 @@ The recovery procedure is documented in detail at [`reference/coordination/recov
 
 ## Branch Convention
 
-KSW currently uses two branch prefixes — to be unified in a future minor version:
+All KSW issue branches — hub and satellite — use the same prefix:
 
-- **Hub** issue branches: `ksw/<ID>-<slug>` — recognised by `reference/hooks/hub/git/post-commit` and `post-checkout`.
-- **Satellite** issue branches: `issue/<ID>-<slug>` — recognised by `reference/hooks/satellite/git/post-commit`, `post-merge`, and `prepare-commit-msg`.
+```
+ksw/<ID>-<slug>
+```
 
-Both forms use lowercase, alphanumeric + hyphens, slug ≤40 chars. Do not invent a new prefix; the hooks key off these regexes.
+`<slug>` is lowercase, alphanumeric + hyphens, ≤40 chars. Do not invent a new prefix; every git hook keys off this regex.
+
+**Grace period (0.6.x):** the legacy satellite prefix `issue/<ID>-<slug>` is still recognised by all hooks. Existing branches keep working. Removal is targeted for the next minor release; new branches should always use `ksw/`.
 
 ## Where this protocol is enforced
 
 - Hub agent hook (`reference/hooks/hub/agents/`) — surfaces stale WIP at session start.
-- Hub git hooks (`reference/hooks/hub/git/`) — `post-commit` reports batched progress on `ksw/<ID>-*` branches; `post-merge` transitions `state:wip` → `state:review`; `pre-push` warns on broken wikilinks; `post-checkout` displays issue context.
-- Satellite git hooks (`reference/hooks/satellite/git/`) — `post-commit` reports progress; `post-merge` transitions `state:wip` → `state:review` and removes from `active_claims`.
+- Hub git hooks (`reference/hooks/hub/git/`) — `prepare-commit-msg` injects `(KSW #ID)` on issue branches; `post-commit` reports batched progress on `ksw/<ID>-*` branches; `post-merge` transitions `state:wip` → `state:review`; `pre-push` warns on broken wikilinks; `post-checkout` displays issue context.
+- Satellite git hooks (`reference/hooks/satellite/git/`) — `prepare-commit-msg` injects `(KSW #ID)`; `post-commit` reports progress; `post-merge` transitions `state:wip` → `state:review` and removes from `active_claims`.
 - `/triage`, `/sat claim`, `/sat done`, `/sat blocked`, `/sat release` — explicit transitions documented in [HUB-COMMANDS.md](HUB-COMMANDS.md), [SATELLITE-COMMANDS.md](SATELLITE-COMMANDS.md), and [WORKFLOWS.md](WORKFLOWS.md).
 
 ## Coordination labels (canonical list)

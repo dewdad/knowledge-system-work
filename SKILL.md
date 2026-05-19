@@ -1,6 +1,6 @@
 ---
 name: ksw
-version: 0.6.0
+version: 0.6.1
 description: AI-native knowledge management — domains, source ingestion, wiki, issue coordination, hub/satellite. Use when the user says "init ksw", "set up knowledge system", runs any /sat command, or references wiki/domains/sources/triage/brief.
 when_to_use:
   - User says "init ksw" / "set up knowledge system" / "bootstrap knowledge management"
@@ -45,9 +45,10 @@ If both files are present, the workspace is misconfigured — ask the user to pi
 | `/review <domain>` | hub | [WORKFLOWS.md](WORKFLOWS.md) → `reference/workflows/domain-review/SKILL.md` |
 | `/brief` | hub | [WORKFLOWS.md](WORKFLOWS.md) → `reference/workflows/morning-brief/SKILL.md` |
 | `/graph-build` | hub | [WORKFLOWS.md](WORKFLOWS.md) (zero-LLM, deterministic) |
+| `/reap` | hub | [HUB-COMMANDS.md](HUB-COMMANDS.md) (stale-WIP recovery) |
 | `/status` | hub | this file (inline below) |
 | `/sat board` | satellite | [SATELLITE-COMMANDS.md](SATELLITE-COMMANDS.md) |
-| `/sat claim <ID>` | satellite | [SATELLITE-COMMANDS.md](SATELLITE-COMMANDS.md) + [COORDINATION.md](COORDINATION.md) (note: satellite branches are `issue/<ID>-…`) |
+| `/sat claim <ID>` | satellite | [SATELLITE-COMMANDS.md](SATELLITE-COMMANDS.md) + [COORDINATION.md](COORDINATION.md) |
 | `/sat done <ID>` | satellite | [SATELLITE-COMMANDS.md](SATELLITE-COMMANDS.md) |
 | `/sat blocked <ID> <reason>` | satellite | [SATELLITE-COMMANDS.md](SATELLITE-COMMANDS.md) |
 | `/sat release <ID>` | satellite | [SATELLITE-COMMANDS.md](SATELLITE-COMMANDS.md) + [COORDINATION.md](COORDINATION.md) |
@@ -56,6 +57,7 @@ If both files are present, the workspace is misconfigured — ask the user to pi
 | `/sat contribute <path>` | satellite | [SATELLITE-COMMANDS.md](SATELLITE-COMMANDS.md) |
 | `/sat status` | satellite | [SATELLITE-COMMANDS.md](SATELLITE-COMMANDS.md) |
 | `/sat brief` | satellite | [SATELLITE-COMMANDS.md](SATELLITE-COMMANDS.md) |
+| `/sat uninstall` | satellite | [SATELLITE-COMMANDS.md](SATELLITE-COMMANDS.md) |
 
 ### Step 3 — Cross-cutting fragments
 
@@ -83,7 +85,8 @@ Report:
 - **Last pull** — most recent `last_pull` value across all `domains/*/.state/pulls.json`.
 - **Graph** — node/edge count from `wiki/_graph/graph.json` if it exists; otherwise `not built (run /graph-build)`.
 - **Skill version** — `ksw.skill_version` from `ksw.yaml`. If it does not match the version in this file's frontmatter, surface a one-line warning suggesting `/init` is re-run to refresh templates.
-- **Stale WIP** — count of `state:wip` issues idle for more than `coordination.stale_wip_timeout_minutes`. Display the count only; recovery is a separate flow (see [COORDINATION.md](COORDINATION.md#stale-lock-recovery)).
+- **Stale WIP** — count of `state:wip` issues idle for more than `coordination.stale_wip_timeout_minutes`. Display the count only and recommend `/reap` for release; recovery is a separate flow (see [COORDINATION.md](COORDINATION.md#stale-lock-recovery) and [HUB-COMMANDS.md § /reap](HUB-COMMANDS.md#reap)).
+- **Satellite registry** — for every entry in `ksw.yaml#satellites[]`, refresh `last_seen_at` from the most recent comment posted by that satellite (the satellite `post-commit` hook already comments under `Progress from \`<workspace>\`:` / `Batch progress from \`<workspace>\``; treat the most recent such comment timestamp as the heartbeat). Persist the updated `last_seen_at` back to `ksw.yaml`. Flag any satellite whose `last_seen_at` is older than 30 days (or that has never been seen) with a `(stale)` tag in the output. This is informational only — `/status` never deregisters satellites; the user manually edits `satellites[]` after `/sat uninstall`.
 
 Output is a single short summary block; no edits, no commits.
 

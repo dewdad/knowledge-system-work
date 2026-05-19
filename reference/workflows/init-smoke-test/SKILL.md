@@ -56,7 +56,7 @@ Before any other check, verify the skill itself was installed as a directory (no
 2. List routed work from the hub using the configured platform CLI.
 3. Create a test issue with the satellite label, claim it, then release it.
 4. Confirm `active_claims` changes only after remote claim verification succeeds.
-5. Make a dry-run commit on a `ksw/<ID>-test` branch and verify the commit message gets `(KSW #ID)` from `prepare-commit-msg`.
+5. Make a dry-run commit on a `ksw/<ID>-test` branch and verify the commit message gets `(KSW #ID)` from `prepare-commit-msg`. (Legacy `issue/<ID>-test` is still accepted during the 0.6.x grace period.)
 
 ## Failure Rule
 

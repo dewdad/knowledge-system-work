@@ -6,8 +6,9 @@ KSW_YAML="ksw.yaml"
 command -v yq >/dev/null 2>&1 || { echo "KSW: yq not found; skipping post-merge hook"; exit 0; }
 
 PLATFORM=$(yq -r '.instance.platform' "$KSW_YAML")
-# Detect merged branch from merge commit message
-MERGED_BRANCH=$(git log -1 --format=%s | sed -nE 's/.*ksw\/([0-9]+).*/\1/p' | head -1)
+# Detect merged branch from merge commit message. Accept ksw/<ID>-... (preferred) or
+# legacy issue/<ID>-... during the 0.6.x grace period.
+MERGED_BRANCH=$(git log -1 --format=%s | sed -nE 's#.*(ksw|issue)/([0-9]+).*#\2#p' | head -1)
 
 if [ "$PLATFORM" = "gitlab" ]; then
   command -v glab >/dev/null 2>&1 || { echo "KSW: glab not found; skipping post-merge hook"; exit 0; }

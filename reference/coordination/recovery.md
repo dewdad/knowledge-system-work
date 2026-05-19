@@ -1,75 +1,68 @@
-# Crash Recovery & Stale Lock Handling
+# Crash Recovery & Stale-Lock Handling
+
+> **Authoritative source.** State definitions live in [`states.yaml`](states.yaml). This document is the operational guide for recovering from crashed or abandoned WIP locks. All shell forms are abstracted via [`PLATFORM-OPS.md`](../../PLATFORM-OPS.md).
 
 ## When an Agent Crashes
 
-If an agent disconnects or crashes while holding a lock (`state:wip` + assigned):
+If an agent disconnects or crashes while holding a lock (`state:wip` + assigned, or a file in `.ksw/queue/wip/` for `local` mode):
 
-1. **Branch preserves partial work** — Any committed changes exist on `issue/<ID>-*`
-2. **Lock becomes stale** — No further activity on the issue
-3. **Another agent can reclaim** — After timeout period
+1. **Branch preserves partial work.** Any committed changes exist on `ksw/<ID>-<slug>` (legacy `issue/<ID>-<slug>` still recognised by hooks during the 0.6.x grace period).
+2. **The lock becomes stale.** No further activity on the issue or branch.
+3. **Another agent can reclaim** after the timeout elapses.
 
-## Stale Lock Detection
+## Stale-Lock Detection
 
-A lock is considered **stale** when ALL conditions are met:
+A lock is **stale** when ALL of:
 
-- Issue has label `state:wip`
-- Issue has an assignee
-- `updated_at` timestamp on the issue is older than `stale_wip_timeout_minutes` (from `ksw.yaml`, default: 30)
-- No new commits on the working branch within the timeout period
+- The item is `state:wip` (label) or in `.ksw/queue/wip/` (local mode).
+- The item has an assignee (or queue file owner field).
+- The maximum of `updated_at`, last-comment-at, and last-commit-on-branch-at is older than `coordination.stale_wip_timeout_minutes` (read from `ksw.yaml`; default 240).
 
-## Recovery Script
+Detection and recovery is automated by `/reap` ([HUB-COMMANDS.md § /reap](../../HUB-COMMANDS.md#reap)). Satellites must not run recovery against their own claims — the hub is the only recovery authority.
 
-Run periodically or before picking up new work:
+## Recovery Procedure (automated)
 
-```bash
-.system/scripts/maintenance/stale-lock-recovery.sh
-```
+`/reap` performs, for each stale item:
 
-This script:
-1. Lists all `state:wip` issues
-2. Checks `updated_at` against timeout
-3. For stale issues: unassigns, moves to `state:ready`
-4. Adds a comment explaining the recovery
-5. Does NOT delete the working branch (preserves partial work)
+1. Unassign the previous owner.
+2. Swap `state:wip` → `state:ready` (or move file from `.ksw/queue/wip/` to `.ksw/queue/ready/`).
+3. Post a comment: `Auto-released after N minutes idle. Branch preserved at <branch_name>.`
+4. **Never deletes the working branch** — partial work belongs to whichever agent picks the issue up next.
+
+`/reap --dry-run` prints what would be released without mutating state.
 
 ## Manual Recovery
 
-If automated recovery isn't sufficient:
+If `/reap` is unavailable or insufficient:
 
-```bash
-# Find stale issues
-glab issue list --label "state:wip"
-
-# Check last activity
-glab issue view <ID>  # Look at updated_at
-
-# Reclaim manually
-glab issue update <ID> --unassignee "<old_agent>" --assignee "@me"
-glab issue note <ID> --message "Manual reclaim: previous agent inactive"
-
-# Continue from existing branch (if any)
-git fetch origin
-git checkout issue/<ID>-*  # Tab-complete the branch name
-```
+1. **List `state:wip` items** via the platform's `list-wip` action (see [PLATFORM-OPS.md](../../PLATFORM-OPS.md)).
+2. **Inspect activity** — `updated_at` on the item, last commit on the branch, last comment.
+3. **Reclaim** — unassign the previous agent, assign yourself, ensure `state:wip` is set (it should already be), comment explaining the manual reclaim.
+4. **Resume from the existing branch** — fetch and check out `ksw/<ID>-*` (or legacy `issue/<ID>-*`). The branch tip holds whatever the previous agent committed.
 
 ## Preventing Stale Locks
 
 Agents SHOULD:
-1. **Commit frequently** — Even WIP commits reset the activity timestamp
-2. **Release early** — If a task is taking longer than expected, release and re-scope
-3. **Comment progress** — `glab issue note <ID>` updates the `updated_at`
-4. **Set realistic scope** — Issues should be completable in one session (< 2 hours)
+
+1. **Commit frequently** — every WIP commit resets the activity window via `post-commit`.
+2. **Release early** — if a task is taking longer than expected, `release` and rescope.
+3. **Comment progress** — explicit notes update `updated_at`.
+4. **Set realistic scope** — issues should be completable in one session; multi-session work should be split.
 
 ## Edge Cases
 
-### Agent Crashed Mid-Commit
-- Working directory may be dirty
-- Recovery: `git stash` or `git reset` on the branch, then re-approach
+### Agent crashed mid-commit
 
-### Two Agents Reclaim Simultaneously
-- Same race condition as initial claim (see PROTOCOL.md §2)
-- Resolution: first commenter wins, second releases
+The working tree may be dirty. Recovery: `git stash` or `git reset` on the branch, then re-approach the change.
 
-### Branch Has Conflicts with Main
-- Agent rebases: `git rebase origin/main`
-- If conflicts are complex: create new issue for conflict resolution, release current
+### Two agents reclaim simultaneously
+
+Same race condition as the initial claim ([PROTOCOL.md § 2.3](PROTOCOL.md#23-race-condition-mitigation)). First commenter wins; the loser releases.
+
+### Branch has conflicts with the default branch
+
+Rebase against `coordination.default_branch` (defaults to `main`). If conflicts are non-trivial, open a fresh `type:decision` issue for the conflict resolution and release the original.
+
+### Local-mode "stale lock"
+
+In `local` mode there is no concurrent agent, so a stale `.ksw/queue/wip/<file>` simply means the previous session ended without finishing. Move the file back to `.ksw/queue/ready/` manually — there is no remote owner to unassign.

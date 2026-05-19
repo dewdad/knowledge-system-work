@@ -42,12 +42,31 @@ print(f'  ✓ {data[\"domain\"]}: {len(data[\"sources\"])} sources valid')
       done
     - echo "All source configs valid"
 
+skill-drift-lint:
+  stage: validate
+  rules:
+    - changes:
+        - "SKILL.md"
+        - "INIT.md"
+        - "HUB-COMMANDS.md"
+        - "SATELLITE-COMMANDS.md"
+        - "PLATFORM-OPS.md"
+        - "COORDINATION.md"
+        - "WORKFLOWS.md"
+        - "INSTALL.md"
+        - "reference/coordination/states.yaml"
+        - "reference/coordination/labels.yaml"
+        - "scripts/lint-skill.sh"
+  script:
+    - echo "Running skill-drift lint..."
+    - bash scripts/lint-skill.sh
+
 nightly-maintenance:
   stage: maintain
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
   script:
     - echo "Running nightly maintenance..."
-    - echo "Check stale WIP issues with the platform CLI; generated instances may replace this with a local script."
+    - echo "Check stale WIP issues with the platform CLI (or run /reap from a hub workspace)."
     - echo "Run /graph-build or the wiki pipeline to refresh link health."
     - echo "Maintenance complete"

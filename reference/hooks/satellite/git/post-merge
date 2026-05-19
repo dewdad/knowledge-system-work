@@ -7,7 +7,9 @@ command -v yq >/dev/null 2>&1 || { echo "KSW: yq not found; skipping post-merge 
 
 HUB=$(yq -r '.hub.project_path' "$KSW_LINK")
 PLATFORM=$(yq -r '.hub.platform' "$KSW_LINK")
-BRANCH_ID=$(git log -1 --format=%s | sed -nE 's/.*issue\/([0-9]+).*/\1/p' | head -1)
+# Detect merged issue branch from merge commit message. Accept ksw/<ID>-... (preferred)
+# or legacy issue/<ID>-... during the 0.6.x grace period.
+BRANCH_ID=$(git log -1 --format=%s | sed -nE 's#.*(ksw|issue)/([0-9]+).*#\2#p' | head -1)
 WORKSPACE=$(basename "$PWD")
 
 if [ "$PLATFORM" = "gitlab" ]; then

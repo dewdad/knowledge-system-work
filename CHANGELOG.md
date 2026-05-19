@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.6.1] - 2026-05-19
+
+Carry-over from the v0.6.0 audit follow-up plan. All items below were tracked as deferred in `.sisyphus/plans/audit-followup-v0.6.0.md` and are now shipped.
+
+### Added
+- **`/reap` (hub-only)** — stale-WIP reaper. Reads `coordination.stale_wip_timeout_minutes`, lists `state:wip` items, computes idle time as `max(updated_at, last_comment_at, branch_last_commit_at)`, and unassigns + transitions stale items to `state:ready`. Branches are preserved. Supports `--dry-run`. Hub agent hooks now invoke `/reap --dry-run` on session start so every hub session sees stale WIP without mutating state. ([HUB-COMMANDS.md § /reap](HUB-COMMANDS.md#reap))
+- **`/sat uninstall` (satellite-only)** — tears down the satellite bridge: removes `.ksw-link.yaml`, strips `## KSW …` sections from `AGENTS.md` / `CLAUDE.md`, removes `.opencode/hooks/ksw-satellite.yaml`, and strips `[KSW-SAT-HOOK-START]…[KSW-SAT-HOOK-END]` blocks from `.git/hooks/{post-commit,post-merge,prepare-commit-msg}`. Posts a `type:maintenance` notification on the hub. Prints a manual-deregister hint for `ksw.yaml#satellites[]`. ([SATELLITE-COMMANDS.md § /sat uninstall](SATELLITE-COMMANDS.md#sat-uninstall))
+- **Hub `prepare-commit-msg` git hook** — auto-injects `(KSW #<ID>)` on `ksw/<ID>-*` branches in hub workspaces, mirroring the satellite hook. Gated on `coordination.auto_issue_ref` (default `true`).
+- **`reference/schemas/secrets.schema.yaml`** — JSON-schema definition for `secrets/<source_id>.yaml` files. Covers bearer/API-key, basic-auth, and OAuth2 client-credential shapes plus an optional `expires_at`. Linked from `/add-source` Step 4.
+- **Satellite registry reconciliation in `/status`** — every entry in `ksw.yaml#satellites[]` gains an additive `last_seen_at` field, refreshed from the most recent satellite-posted comment on the hub. `/status` flags any satellite older than 30 days as `(stale)` (informational only).
+- **Drift-lint in CI** — `reference/templates/ci/maintenance-pipeline.yml` now includes a `skill-drift-lint` job that runs `bash scripts/lint-skill.sh` on every change to fragments or coordination YAMLs.
+
+### Changed
+- **Branch convention unified to `ksw/<ID>-<slug>`** — both hub and satellite branches now use the same prefix. Hub git hooks (`post-commit`, `post-checkout`, `post-merge`) and satellite git hooks (`post-commit`, `post-merge`, `prepare-commit-msg`) all accept `ksw/<ID>-...` (preferred) **and** legacy `issue/<ID>-...` during the 0.6.x grace period. Existing branches keep working; new branches should always use `ksw/`. Removal of legacy `issue/` is targeted for the next minor release. (`SATELLITE-COMMANDS.md`, `COORDINATION.md`, hooks)
+- **Default-branch detection in hooks** — hub `post-commit` reads `coordination.default_branch` from `ksw.yaml`; satellite `post-commit` reads `hub.default_branch` from `.ksw-link.yaml`. Both fall back to `main`. Hardcoded `main..` rev-list ranges are gone.
+- **`reference/coordination/PROTOCOL.md` rewritten platform-agnostic** — operational guide now references the `PLATFORM-OPS.md` action vocabulary instead of inlining `glab` commands. Header explicitly names `states.yaml` and `labels.yaml` as the normative sources of truth. `recovery.md` rewritten to match.
+- **`reference/coordination/states.yaml`** — `wip.timeout.minutes` raised from `30` → `240` (matching the new ksw.yaml default). Branch entry-action notes the unified convention plus the legacy grace period.
+- **`coordination.stale_wip_timeout_minutes` default raised 30 → 240** in the generated `ksw.yaml`. The aggressive 30-minute default fired on legitimate work; 240 minutes (4 hours) better matches realistic agent session lengths and is documented as the trigger for `/reap`.
+- **`/reap` wired into hub agent hooks** — `reference/hooks/hub/agents/opencode.yaml` and `claude.md` now call `/reap --dry-run` on session start.
+- **`reference/workflows/wiki-to-issue/SKILL.md`** — explicitly lists `wiki/_graph/orphans.md` as an input. Orphans with domain/concept context become `type:research` issues.
+
+### Removed
+- **`coordination.max_parallel_agents`** — dropped from the generated `ksw.yaml` template. Cross-agent counting was fragile and the field had no enforcement path. Existing `ksw.yaml` files keep the field harmlessly; nothing reads it.
+
+### Notes
+- Backward compatible. Existing 0.6.0 hub repos and satellite installs continue to work. The `default_branch` field added to `.ksw-link.yaml` is read with a `// "main"` fallback. The `last_seen_at` field on satellites is additive. `auto_issue_ref` (hub) defaults to `true` if absent.
+- No `config_version` bump.
+
 ## [0.6.0] - 2026-05-19
 
 Audit follow-up — installation correctness, skill loader metadata, and a structural split of `SKILL.md` so consuming agents only load the fragment relevant to the current command.
