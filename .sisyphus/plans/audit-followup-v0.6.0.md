@@ -9,6 +9,46 @@
 
 ---
 
+## STATUS (2026-05-19)
+
+Phases A + B + C executed in one session and verified (`bash scripts/lint-skill.sh` clean, all cross-refs resolve, SKILL.md = 104 lines).
+
+| Item | Phase | Status |
+|---|---|---|
+| A1 — SKILL.md frontmatter | A | ✅ shipped |
+| A2 — Version stamp in `ksw.yaml` / `.ksw-link.yaml` | A | ✅ shipped |
+| A3 — VERSION bump + CHANGELOG entry | A | ✅ shipped |
+| B1 — Install model decision (chose B1.a directory install) | B | ✅ shipped |
+| B2 — README rewrite + `INSTALL.md` | B | ✅ shipped |
+| B3 — Init-smoke-test directory-install check | B | ✅ shipped |
+| C1 — Target structure (7 fragments + reference/) | C | ✅ shipped |
+| C2 — SKILL.md router contract (104 lines, ≤200 target) | C | ✅ shipped |
+| C3 — Fragment extraction rules (self-contained, "Loaded when" headers) | C | ✅ shipped |
+| C4 — `scripts/lint-skill.sh` drift lint | C | ✅ shipped (CI wiring deferred) |
+| C5 — Content migration per the table | C | ✅ shipped |
+| C6 — Token-cost validation | C | ⚠️ approximated by line count, not measured |
+| D1 — Branch convention unification (`ksw/` everywhere) | D | ⏸ deferred — current dual convention documented in `COORDINATION.md` |
+| D2 — Default-branch detection in hooks | D | ⏸ deferred (config field added to `.ksw-link.yaml` schema, hooks unchanged) |
+| D3 — Complete label table | D | ✅ shipped via `COORDINATION.md` (canonical list including `type:bug`, `needs:clarification`, `domain:<n>`, `satellite:<n>`) |
+| D4 — State-machine single source of truth | D | ⏸ deferred — note added in `COORDINATION.md` header; PROTOCOL.md rewrite not done |
+| D5 — `secrets/` schema file | D | ⏸ deferred — schema shape inlined in `HUB-COMMANDS.md` `/add-source` Step 4 |
+| E1 — `/reap` stale-WIP command | E | ⏸ deferred |
+| E2 — Satellite-on-local-hub guard | E | ✅ shipped at `/init` time in `INIT.md` Step 1 |
+| E3 — `max_parallel_agents` enforce-or-drop | E | ⏸ deferred (field preserved in schema, no behavioural change) |
+| E4 — Cross-host pull lock | E/F | ⏸ deferred (limitation documented in `WORKFLOWS.md`) |
+| E5 — Satellite registry reconciliation | E | ⏸ deferred |
+| E6 — `/sat uninstall` | E | ⏸ deferred (manual procedure documented in `INSTALL.md`) |
+| F1 — Hub `prepare-commit-msg` hook | F | ⏸ deferred |
+| F2 — Orphans → `wiki-to-issue` wiring | F | ⏸ deferred |
+| F3 — `/sat contribute` conflict spec | F | ✅ shipped (added to `SATELLITE-COMMANDS.md` while migrating that section) |
+
+**Files added:** `INIT.md`, `HUB-COMMANDS.md`, `SATELLITE-COMMANDS.md`, `PLATFORM-OPS.md`, `COORDINATION.md`, `WORKFLOWS.md`, `INSTALL.md`, `scripts/lint-skill.sh`.
+**Files modified:** `SKILL.md`, `README.md`, `AGENTS.md`, `CHANGELOG.md`, `VERSION`, `reference/workflows/init-smoke-test/SKILL.md`.
+
+**Carry-over for the next session:** D1, D2, D4, D5, E1, E3, E5, E6, F1, F2 (and any C4 CI wiring + C6 measured token validation). Sections §1–§11 below preserve the original specs for those items.
+
+---
+
 ## 0. Goals (and non-goals)
 
 ### Goals

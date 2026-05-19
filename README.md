@@ -23,25 +23,27 @@ One `/init` command gives you either:
 
 ## Install
 
-### Skillshare
+KSW is a **multi-file skill**. Install it as a directory — single-file installs (`cp SKILL.md …`) will fail at `/init` because the init flow reads sibling fragments and `reference/` templates. See [INSTALL.md](INSTALL.md) for full details.
+
+### Skillshare (recommended)
 ```bash
 skillshare install ksw --source github:dewdad/knowledge-system-work
 ```
 
-### OpenCode
+### OpenCode (manual)
 ```bash
-# Copy or symlink SKILL.md into your skills directory
-cp SKILL.md ~/.config/opencode/skills/ksw/SKILL.md
+git clone https://github.com/dewdad/knowledge-system-work.git ~/.config/opencode/skills/ksw
 ```
 
-### Claude Code
+### Claude Code (manual — directory, not flat file)
 ```bash
-# Add to .claude/skills/ in your project or global config
-cp SKILL.md ~/.claude/skills/ksw.md
+git clone https://github.com/dewdad/knowledge-system-work.git ~/.claude/skills/ksw
 ```
 
-### Manual
-Copy `SKILL.md` from this repo into your AI client's skill directory.
+### Cursor / other tools
+Clone (or copy) the whole repo into `<tool_skills_dir>/ksw/` so `SKILL.md`, sibling fragments, and `reference/` ship together.
+
+> ⚠️ `cp SKILL.md ~/.claude/skills/ksw.md` will not work. The skill needs its sibling files. Always install as a directory.
 
 ## Usage
 
@@ -115,9 +117,16 @@ Current reference workflows and hook templates are GitLab-first. GitHub and loca
 ## Repository Structure
 
 ```
-SKILL.md              ← The installable skill (this is the product)
-reference/            ← Supporting documentation (not deployed with skill)
-  coordination/       ← Protocol specs (state machine, labels, recovery)
+SKILL.md              ← Router (frontmatter + workspace detection + command index)
+INIT.md               ← /init flow (hub + satellite) and config schemas
+HUB-COMMANDS.md       ← /add-domain, /add-source
+SATELLITE-COMMANDS.md ← All /sat * commands
+PLATFORM-OPS.md       ← Platform CLI tables (gitlab/github/local)
+COORDINATION.md       ← State machine, claim/release, stale-WIP recovery
+WORKFLOWS.md          ← Workflow router/index → reference/workflows/*
+INSTALL.md            ← Install methods + directory-form requirement
+reference/            ← Templates and detailed workflows (read at runtime by /init)
+  coordination/       ← Normative state and label YAMLs + protocol guide
   hooks/              ← Hook templates installed during /init
     hub/git/          ← Hub git hooks (post-commit, post-merge, pre-push, post-checkout)
     hub/agents/       ← Hub agent hooks (opencode.yaml, claude.md)
@@ -126,6 +135,7 @@ reference/            ← Supporting documentation (not deployed with skill)
   schemas/            ← YAML schema definitions
   templates/          ← Issue/MR templates, CI fragments
   workflows/          ← Detailed per-workflow documentation
+scripts/              ← Repo dev tooling (lint-skill.sh, etc.)
 ```
 
 ## Commands Reference

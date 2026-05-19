@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.6.0] - 2026-05-19
+
+Audit follow-up — installation correctness, skill loader metadata, and a structural split of `SKILL.md` so consuming agents only load the fragment relevant to the current command.
+
+### Added
+- **Skill frontmatter** — `SKILL.md` now starts with a YAML block (`name`, `version`, `description`, `when_to_use`, `entry_points`) so Claude Code / opencode skill loaders index KSW correctly.
+- **Multi-file skill split** — SKILL.md is now a router (~95 lines). Detailed content moved into siblings:
+  - `INIT.md` — full hub + satellite init flow and config schemas.
+  - `HUB-COMMANDS.md` — `/add-domain`, `/add-source`.
+  - `SATELLITE-COMMANDS.md` — every `/sat *` command.
+  - `PLATFORM-OPS.md` — gitlab/github/local CLI tables and the post-mutation re-read rule.
+  - `COORDINATION.md` — state machine, claim/release rules, stale-WIP recovery, branch conventions, canonical label table.
+  - `WORKFLOWS.md` — workflow router/index pointing to `reference/workflows/*`.
+- **`INSTALL.md`** — install methods for skillshare, OpenCode, Claude Code, Cursor; explicit anti-pattern: single-file `cp SKILL.md` install.
+- **Version stamp in generated configs** — `ksw.yaml` and `.ksw-link.yaml` now include a `ksw:` block with `skill_version` and `config_version` (default `1`). `/status` warns on skill version mismatch; `config_version` is reserved for future breaking schema changes.
+- **Directory-install smoke check** — `reference/workflows/init-smoke-test/SKILL.md` gains a "Common: Directory-install check" step. `/init` aborts with a clear "re-install as a directory" message if `reference/` siblings are missing.
+- **`scripts/lint-skill.sh`** — drift lint that validates: every state in `reference/coordination/states.yaml` is named in `COORDINATION.md`; every label in `reference/coordination/labels.yaml` is named in `COORDINATION.md`; every command in SKILL.md's routing table maps to exactly one fragment; every fragment is reachable from SKILL.md. Exits non-zero on any drift.
+
+### Changed
+- **README install section** — removed the `cp SKILL.md ~/.claude/skills/ksw.md` line; documented directory installs for OpenCode, Claude Code, and other tools.
+- **README repository structure** — updated to reflect the split fragments and the new `scripts/` directory.
+- **Init smoke test** — also verifies `ksw.skill_version` matches the loaded skill (warning, not error) and uses the `ksw/<ID>-test` branch on the hub-side smoke and `issue/<ID>-test` on the satellite-side smoke (matching the unchanged hooks).
+- **`COORDINATION.md` (new)** explicitly documents the current dual branch convention (`ksw/<ID>-...` for hub, `issue/<ID>-...` for satellite). Unification is planned for a future minor.
+
+### Fixed
+- **Install hole** — single-file `cp SKILL.md ksw.md` installs no longer silently fail at `/init`. The smoke test surfaces the problem with an actionable message.
+- **Empty skill metadata** — Claude Code / opencode skill loaders previously displayed empty fields for KSW because no frontmatter was present.
+
+### Notes
+- Backward compatible. Existing 0.5.0 hub repos and satellite installs continue to work — no `config_version` bump. Re-running `/init` will refresh generated workflow docs and add the `ksw.skill_version` field to existing `ksw.yaml` / `.ksw-link.yaml`.
+- The single-file install (`cp SKILL.md ...`) is now an explicit anti-pattern. Reinstall as a directory.
+- The following audit items are documented in `.sisyphus/plans/audit-followup-v0.6.0.md` but deferred to a later release: cross-host pull lock (E4), stale-WIP reaper (`/reap`), `/sat uninstall`, satellite registry reconciliation, branch convention unification, hub `prepare-commit-msg` hook, `secrets/` schema file, drift-lint CI integration.
+
 ## [0.5.0] - 2026-05-11
 
 ### Added
